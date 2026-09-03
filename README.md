@@ -33,8 +33,13 @@
 | 功能 | 地址 | 说明 |
 |---|---|---|
 | 静态首页 | `GET /` | 显示项目欢迎页面 |
-| 问候接口 | `GET /hi` | 返回韩文问候文本 |
-| 测试接口 | `GET /test` | 返回 `/test` 请求的响应文本 |
+| 通用映射接口 | `GET /request` | 使用 `@RequestMapping` 指定 GET 请求 |
+| 问候接口 | `GET /hi` | 使用 `@GetMapping` 返回中文问候文本 |
+| 测试接口 | `GET /test` | 使用 `@GetMapping` 返回测试文本 |
+| 创建用户 | `POST /users` | 使用 `@PostMapping` 创建示例数据 |
+| 修改用户 | `PUT /users/{id}` | 使用 `@PutMapping` 整体修改示例数据 |
+| 部分修改用户 | `PATCH /users/{id}` | 使用 `@PatchMapping` 局部修改示例数据 |
+| 删除用户 | `DELETE /users/{id}` | 使用 `@DeleteMapping` 删除示例数据 |
 
 ## 技术栈
 
@@ -74,9 +79,10 @@ springboot-devloper/
 ### `BackendApplication.java`
 
 ```java
-@SpringBootApplication
+@SpringBootApplication // 启用自动配置，并扫描当前包下的 Spring 组件。
 public class BackendApplication {
     public static void main(String[] args) {
+        // 启动 Spring Boot，同时启动内置的 Web 服务器。
         SpringApplication.run(BackendApplication.class, args);
     }
 }
@@ -91,21 +97,50 @@ public class BackendApplication {
 ### `TestController.java`
 
 ```java
-@RestController
+@RestController // 方法返回值会直接作为 HTTP 响应内容。
 public class TestController {
-    @GetMapping("/test")
-    public String test() {
-        return "안녕하세요! /test 요청에 대한 응답합니다.";
+    // @RequestMapping 是通用写法，可以通过 method 指定请求类型。
+    @RequestMapping(value = "/request", method = RequestMethod.GET)
+    public String requestMappingExample() {
+        return "这是 @RequestMapping 接口返回的内容。";
+    }
+
+    @GetMapping("/hi") // 处理 GET 请求，通常用于查询数据。
+    public String hi() {
+        return "你好，这是 Spring Boot 返回的内容。";
+    }
+
+    @PostMapping("/users") // 处理 POST 请求，通常用于创建数据。
+    public String createUser() {
+        return "用户创建成功";
+    }
+
+    @PutMapping("/users/{id}") // 处理 PUT 请求，通常用于整体修改数据。
+    public String updateUser(@PathVariable int id) {
+        return "修改用户 " + id;
+    }
+
+    @PatchMapping("/users/{id}") // 处理 PATCH 请求，通常用于局部修改数据。
+    public String patchUser(@PathVariable int id) {
+        return "部分修改用户 " + id;
+    }
+
+    @DeleteMapping("/users/{id}") // 处理 DELETE 请求，通常用于删除数据。
+    public String deleteUser(@PathVariable int id) {
+        return "删除用户 " + id;
     }
 }
 ```
 
-- `@RestController` 表示这是一个 REST 控制器。
-- 控制器中的返回值会直接作为 HTTP 响应内容，而不是视图名称。
-- `@GetMapping("/test")` 将 GET 请求路径 `/test` 映射到 `test()` 方法。
-- 方法返回 `String` 时，浏览器会收到普通文本响应。
-
-当前控制器还提供了 `/hi` 接口，使用相同的请求映射方式。
+- `@RestController` 表示这是一个 REST 控制器，方法返回值会直接作为 HTTP 响应内容。
+- `@RequestMapping` 是通用映射注解，可以通过 `method` 属性指定请求类型。
+- `@GetMapping` 处理 GET 请求，通常用于查询数据。
+- `@PostMapping` 处理 POST 请求，通常用于创建数据。
+- `@PutMapping` 处理 PUT 请求，通常用于整体修改数据。
+- `@PatchMapping` 处理 PATCH 请求，通常用于局部修改数据。
+- `@DeleteMapping` 处理 DELETE 请求，通常用于删除数据。
+- `{id}` 是路径参数，`@PathVariable` 可以把它接收到 Java 方法参数中。
+- 方法返回 `String` 时，浏览器或客户端会收到普通文本响应。
 
 ### `index.html`
 
@@ -118,7 +153,8 @@ src/main/resources/static/index.html
 Spring Boot 会自动提供 `static` 目录下的静态资源。访问根路径 `/` 时，应用会返回这个 HTML 页面。该页面与 REST 接口是两种不同的内容：
 
 - `/` 返回 HTML 页面。
-- `/hi` 和 `/test` 返回接口文本。
+- `/hi`、`/test` 和 `/request` 是 GET 文本接口。
+- `/users` 相关接口分别演示 POST、PUT、PATCH 和 DELETE 请求。
 
 ## Spring Boot 启动流程
 
@@ -156,7 +192,19 @@ GET http://localhost:8080/
 
 返回 `index.html` 静态页面，页面内容包括项目标题和欢迎信息。
 
-### 2. `/hi` 问候接口
+### 2. `@RequestMapping` 示例
+
+```http
+GET http://localhost:8080/request
+```
+
+返回：
+
+```text
+这是 @RequestMapping 接口返回的内容。
+```
+
+### 3. `/hi` 问候接口
 
 ```http
 GET http://localhost:8080/hi
@@ -165,10 +213,10 @@ GET http://localhost:8080/hi
 返回：
 
 ```text
-안녕하세요!'http://localhost:8080/hi'에 대한 응답합니다
+你好，这是 Spring Boot 返回的内容。
 ```
 
-### 3. `/test` 测试接口
+### 4. `/test` 测试接口
 
 ```http
 GET http://localhost:8080/test
@@ -177,12 +225,35 @@ GET http://localhost:8080/test
 返回：
 
 ```text
-안녕하세요! /test 요청에 대한 응답합니다.
+你好，这是 /test 接口返回的内容。
 ```
 
-也可以使用 PowerShell 测试接口：
+### 5. 用户接口示例
+
+下面四个接口只用于演示不同的 HTTP 请求映射方式，暂时没有连接数据库。
+
+```text
+POST   /users       -> 用户创建成功
+PUT    /users/1     -> 修改用户 1
+PATCH  /users/1     -> 部分修改用户 1
+DELETE /users/1     -> 删除用户 1
+```
+
+PowerShell 可以使用 `Invoke-WebRequest` 发送 GET 请求；POST、PUT、PATCH 和 DELETE 请求可以使用 Postman、IDEA HTTP Client 或 curl 测试。
+
+例如：
 
 ```powershell
+Invoke-WebRequest -Method Post http://localhost:8080/users
+Invoke-WebRequest -Method Put http://localhost:8080/users/1
+Invoke-WebRequest -Method Patch http://localhost:8080/users/1
+Invoke-WebRequest -Method Delete http://localhost:8080/users/1
+```
+
+也可以使用 PowerShell 测试 GET 接口：
+
+```powershell
+Invoke-WebRequest http://localhost:8080/request
 Invoke-WebRequest http://localhost:8080/hi
 Invoke-WebRequest http://localhost:8080/test
 ```
@@ -285,7 +356,7 @@ dependencies {
 
 ### 访问接口返回 404
 
-请检查：
+优先检查：
 
 1. Spring Boot 应用是否已经成功启动。
 2. 请求方法是否为 GET。

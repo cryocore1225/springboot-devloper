@@ -7,15 +7,30 @@
 <body>
 <h1>Spring Boot 入门示例</h1>
 <p>欢迎来到我的第一个 Spring Boot Web 项目。</p>
-<p>你可以访问下面的接口：</p>
+<p>数据存放在 H2 内存数据库里，下面的用户接口会真正读写数据库。</p>
+
+<h2>文本接口</h2>
 <ul>
     <li><a href="/request">/request</a>：@RequestMapping 示例</li>
     <li><a href="/hi">/hi</a>：返回一段问候文本</li>
     <li><a href="/test">/test</a>：返回另一段测试文本</li>
-    <li>POST /users：创建用户</li>
-    <li>PUT /users/{id}：整体修改用户</li>
-    <li>PATCH /users/{id}：部分修改用户</li>
-    <li>DELETE /users/{id}：删除用户</li>
+</ul>
+
+<h2>用户接口</h2>
+<ul>
+    <li><a href="/users">GET /users</a>：查询全部用户</li>
+    <li>GET /users/{id}：按 id 查询，例如 <a href="/users/1">/users/1</a>，查不到返回 404</li>
+    <li>POST /users：新增用户，返回 201</li>
+    <li>PUT /users/{id}：整体替换用户信息</li>
+    <li>PATCH /users/{id}：局部更新用户信息</li>
+    <li>DELETE /users/{id}：删除用户，成功返回 204</li>
+</ul>
+<p>POST、PUT、PATCH、DELETE 没法直接用浏览器的地址栏访问，
+得用 Postman、curl 或 PowerShell 发送请求，具体命令见项目 README。</p>
+
+<h2>数据库工具</h2>
+<ul>
+    <li><a href="/h2-console">/h2-console</a>：H2 数据库控制台，可以直接执行 SQL 查看表里的数据</li>
 </ul>
 </body>
 </html>

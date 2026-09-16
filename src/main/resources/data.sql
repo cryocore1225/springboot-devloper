@@ -6,6 +6,6 @@
 --
 -- 这里不写 id 列，因为主键由 H2 自增生成。
 
-INSERT INTO users (name, email) VALUES ('张三', 'zhangsan@example.com');
-INSERT INTO users (name, email) VALUES ('李四', 'lisi@example.com');
-INSERT INTO users (name, email) VALUES ('王五', 'wangwu@example.com');
+INSERT INTO members (name, email) VALUES ('张三', 'zhangsan@example.com');
+INSERT INTO members (name, email) VALUES ('李四', 'lisi@example.com');
+INSERT INTO members (name, email) VALUES ('王五', 'wangwu@example.com');

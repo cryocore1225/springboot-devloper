@@ -1,6 +1,6 @@
 # springboot-devloper
 
-一个用于学习 **Spring Boot Java Web 开发** 的入门项目。项目通过 Gradle 管理依赖，包含 Spring Boot 启动类、REST 接口和静态首页，并已接入 **H2 内存数据库 + Spring Data JPA**，实现了一套真正读写数据库的用户增删改查接口，用来熟悉从项目启动、HTTP 请求响应到数据落库的完整流程。
+一个用于学习 **Spring Boot Java Web 开发** 的入门项目。项目通过 Gradle 管理依赖，包含 Spring Boot 启动类、REST 接口和静态首页，并已接入 **H2 内存数据库 + Spring Data JPA**，实现了一套真正读写数据库的成员增删改查接口，用来熟悉从项目启动、HTTP 请求响应到数据落库的完整流程。
 
 ## 目录
 
@@ -41,12 +41,12 @@
 | 通用映射接口 | `GET /request` | 使用 `@RequestMapping` 指定 GET 请求 |
 | 问候接口 | `GET /hi` | 使用 `@GetMapping` 返回中文问候文本 |
 | 测试接口 | `GET /test` | 使用 `@GetMapping` 返回测试文本 |
-| 查询全部用户 | `GET /users` | 查出数据库里的所有用户 |
-| 查询单个用户 | `GET /users/{id}` | 按 id 查询，查不到返回 404 |
-| 新增用户 | `POST /users` | 把请求体里的 JSON 存进数据库，返回 201 |
-| 整体替换用户 | `PUT /users/{id}` | 用请求体整体覆盖原有数据 |
-| 局部更新用户 | `PATCH /users/{id}` | 只修改请求体里出现的字段 |
-| 删除用户 | `DELETE /users/{id}` | 从数据库删除，成功返回 204 |
+| 查询全部成员 | `GET /members` | 查出数据库里的所有成员 |
+| 查询单个成员 | `GET /members/{id}` | 按 id 查询，查不到返回 404 |
+| 新增成员 | `POST /members` | 把请求体里的 JSON 存进数据库，返回 201 |
+| 整体替换成员 | `PUT /members/{id}` | 用请求体整体覆盖原有数据 |
+| 局部更新成员 | `PATCH /members/{id}` | 只修改请求体里出现的字段 |
+| 删除成员 | `DELETE /members/{id}` | 从数据库删除，成功返回 204 |
 | 数据库控制台 | `GET /h2-console` | H2 自带的网页版 SQL 控制台 |
 
 上面除首页和控制台之外的接口都真正读写数据库，不再是返回写死字符串的假接口。
@@ -82,13 +82,13 @@ springboot-devloper/
         │       ├── BackendApplication.java   # Spring Boot 启动类
         │       ├── controller/               # 控制器层：接收 HTTP 请求
         │       │   ├── TestController.java       # 文本接口示例
-        │       │   └── UserController.java       # 用户增删改查接口
+        │       │   └── MemberController.java       # 成员增删改查接口
         │       ├── service/                  # 业务逻辑层：决定要做什么
-        │       │   └── UserService.java
+        │       │   └── MemberService.java
         │       ├── repository/               # 数据访问层：和数据库打交道
-        │       │   └── UserRepository.java
+        │       │   └── MemberRepository.java
         │       └── entity/                   # 实体层：Java 类与数据表的映射
-        │           └── User.java
+        │           └── Member.java
         └── resources/
             ├── application.properties        # 应用与数据库配置
             ├── data.sql                      # 启动时预置的示例数据
@@ -143,7 +143,7 @@ public class TestController {
 - 方法返回 `String` 时，浏览器或客户端会收到普通文本响应。
 
 这个控制器现在只保留三个不访问数据库的文本接口。原来演示 POST / PUT / PATCH / DELETE 的四个方法已经删掉，
-因为它们的路径 `/users` 会和新写的 `UserController` 撞车，改由后者提供同样路径、但真正操作数据库的版本。
+因为它们的路径 `/members` 会和新写的 `MemberController` 撞车，改由后者提供同样路径、但真正操作数据库的版本。
 
 ### `index.html`
 
@@ -157,15 +157,15 @@ Spring Boot 会自动提供 `static` 目录下的静态资源。访问根路径 
 
 - `/` 返回 HTML 页面。
 - `/hi`、`/test` 和 `/request` 是 GET 文本接口。
-- `/users` 相关接口真正读写数据库，覆盖查询、新增、整体修改、局部修改和删除。
+- `/members` 相关接口真正读写数据库，覆盖查询、新增、整体修改、局部修改和删除。
 - `/h2-console` 是 H2 数据库自带的控制台页面。
 
-### `entity/User.java`
+### `entity/Member.java`
 
 ```java
 @Entity // 告诉 JPA：这是一个要映射成数据表的类。
-@Table(name = "users") // user 是 H2 的保留字，表名直接叫 user 会建表失败，所以用复数。
-public class User {
+@Table(name = "members") // member 是 H2 的保留字，表名直接叫 member 会建表失败，所以用复数。
+public class Member {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -176,12 +176,12 @@ public class User {
     @Column(nullable = false, unique = true)
     private String email;
 
-    protected User() { }   // JPA 要求的无参构造函数
+    protected Member() { }   // JPA 要求的无参构造函数
 }
 ```
 
 - `@Entity` 把这个类和一张数据表绑定起来，Hibernate 会根据字段自动建表。
-- `@Table(name = "users")` 指定表名。**不能直接用 `user`**，它是 H2 的保留字，建表会失败。
+- `@Table(name = "members")` 指定表名。**不能直接用 `member`**，它是 H2 的保留字，建表会失败。
 - `@Id` 标记主键；`@GeneratedValue(strategy = GenerationType.IDENTITY)` 表示主键交给数据库自增生成，新增时不用自己填。
 - `@Column` 用来设置列的限制：`nullable = false` 表示不允许为空，`unique = true` 表示不允许重复。
 - 无参构造函数是 JPA 的硬性要求：Hibernate 从数据库读出数据时，要用反射先造一个空对象再往里塞值。
@@ -191,11 +191,11 @@ public class User {
 所以 `name`、`email` 这类单个单词的字段列名不变，但以后如果加上 `createdAt`，
 建表时对应的列名会是 `created_at` —— 这是正常行为，不是配置写错了。
 
-### `repository/UserRepository.java`
+### `repository/MemberRepository.java`
 
 ```java
-public interface UserRepository extends JpaRepository<User, Long> {
-    Optional<User> findByEmail(String email);
+public interface MemberRepository extends JpaRepository<Member, Long> {
+    Optional<Member> findByEmail(String email);
 }
 ```
 
@@ -205,14 +205,14 @@ public interface UserRepository extends JpaRepository<User, Long> {
 - `findByEmail` 演示了**派生查询**：方法名本身就是一条查询语句，`findBy` 后面跟字段名，
   Spring Data JPA 会把它翻译成 `where email = ?`。它目前还没有对应的接口，留作写法示例。
 
-### `service/UserService.java`
+### `service/MemberService.java`
 
 业务逻辑层。控制器只负责收发 HTTP 请求，具体做什么由这一层决定。
 
 - `@Service` 把它标记成由 Spring 管理的服务组件。
 - `@Transactional(readOnly = true)` 加在类上，表示下面的方法默认运行在只读事务里；写数据的方法各自覆盖成可写事务。
-- 通过**构造函数注入** `UserRepository`，字段声明成 `final`。只有一个构造函数时不需要写 `@Autowired`。
-- 查不到用户时统一返回 `Optional.empty()`，交给控制器去决定返回 404，而不是直接抛异常。
+- 通过**构造函数注入** `MemberRepository`，字段声明成 `final`。只有一个构造函数时不需要写 `@Autowired`。
+- 查不到成员时统一返回 `Optional.empty()`，交给控制器去决定返回 404，而不是直接抛异常。
 
 写方法有三个值得注意的地方：
 
@@ -222,27 +222,27 @@ public interface UserRepository extends JpaRepository<User, Long> {
 3. `patch` 里每个字段都先判断是否为 null 再赋值，这正是 PUT 和 PATCH 语义差别的来源：
    PUT 无条件覆盖全部字段，PATCH 只覆盖请求里真正提供了的字段。
 
-### `controller/UserController.java`
+### `controller/MemberController.java`
 
 ```java
 @RestController
-@RequestMapping("/users") // 类级前缀，下面每个方法只写自己那一段路径
-public class UserController {
-    @GetMapping              public ResponseEntity<List<User>> findAll()
-    @GetMapping("/{id}")     public ResponseEntity<User> findById(@PathVariable Long id)
-    @PostMapping             public ResponseEntity<User> create(@RequestBody User user)
-    @PutMapping("/{id}")     public ResponseEntity<User> update(@PathVariable Long id, @RequestBody User user)
-    @PatchMapping("/{id}")   public ResponseEntity<User> patch(@PathVariable Long id, @RequestBody User user)
+@RequestMapping("/members") // 类级前缀，下面每个方法只写自己那一段路径
+public class MemberController {
+    @GetMapping              public ResponseEntity<List<Member>> findAll()
+    @GetMapping("/{id}")     public ResponseEntity<Member> findById(@PathVariable Long id)
+    @PostMapping             public ResponseEntity<Member> create(@RequestBody Member member)
+    @PutMapping("/{id}")     public ResponseEntity<Member> update(@PathVariable Long id, @RequestBody Member member)
+    @PatchMapping("/{id}")   public ResponseEntity<Member> patch(@PathVariable Long id, @RequestBody Member member)
     @DeleteMapping("/{id}")  public ResponseEntity<Void> delete(@PathVariable Long id)
 }
 ```
 
-- `@RequestMapping("/users")` 是类级前缀，和方法上的路径拼起来才是完整地址。
-- `@RequestBody` 把请求体里的 JSON 自动转成 `User` 对象，`@PathVariable` 把 URL 里的 `{id}` 接进方法参数。
-- 返回值用 `ResponseEntity` 而不是裸的 `User`，因为需要表达不同的状态码：
+- `@RequestMapping("/members")` 是类级前缀，和方法上的路径拼起来才是完整地址。
+- `@RequestBody` 把请求体里的 JSON 自动转成 `Member` 对象，`@PathVariable` 把 URL 里的 `{id}` 接进方法参数。
+- 返回值用 `ResponseEntity` 而不是裸的 `Member`，因为需要表达不同的状态码：
   - 新增成功返回 **201 Created**，并通过 `Location` 响应头告诉调用方新资源的地址。
   - 删除成功返回 **204 No Content**，表示成功但没有响应体。
-  - 查不到用户返回 **404 Not Found**，用 `Optional` 的 `map` / `orElseGet` 一行写完。
+  - 查不到成员返回 **404 Not Found**，用 `Optional` 的 `map` / `orElseGet` 一行写完。
 - PUT 与 PATCH 的区别：PUT 会把没提供的字段一并覆盖成 null，PATCH 只改提供的字段。这个差别可以在下面的接口文档里实测。
 
 ## 数据库配置说明
@@ -271,7 +271,7 @@ Spring Boot 的配置文件，放在 `src/main/resources/` 下会被自动读取
 
 ### `data.sql`
 
-预置示例数据的脚本，插入了三条用户记录（张三、李四、王五），这样程序一启动 `GET /users` 就有内容可看。
+预置示例数据的脚本，插入了三条成员记录（张三、李四、王五），这样程序一启动 `GET /members` 就有内容可看。
 
 **这里有个经典坑**：Spring Boot 默认在**数据源初始化阶段**执行 `data.sql`，而这个时机**早于 Hibernate 建表**，
 直接 INSERT 会报「表不存在」。解决办法就是配上 `spring.jpa.defer-datasource-initialization=true`，
@@ -298,7 +298,7 @@ SpringApplication.run(...)
 创建 HikariCP 连接池，连上 H2 内存库
           │
           ▼
-Hibernate 按 User 实体建出 users 表
+Hibernate 按 Member 实体建出 members 表
           │
           ▼
 执行 data.sql，插入三条示例数据
@@ -307,7 +307,7 @@ Hibernate 按 User 实体建出 users 表
 启动内置 Web 服务器（默认 8080）
           │
           ▼
-浏览器访问 /、/hi 或 /users
+浏览器访问 /、/hi 或 /members
 ```
 
 启动类 `BackendApplication` 位于基础包 `me.scpark.springdeveloper`，
@@ -360,14 +360,14 @@ GET http://localhost:8080/test
 你好，这是 /test 接口返回的内容。
 ```
 
-### 5. 用户接口
+### 5. 成员接口
 
 下面这些接口会真正读写数据库。程序启动后 H2 里已经有三条预置数据。
 
-**查询全部用户**
+**查询全部成员**
 
 ```http
-GET http://localhost:8080/users
+GET http://localhost:8080/members
 ```
 
 ```json
@@ -378,29 +378,29 @@ GET http://localhost:8080/users
 ]
 ```
 
-**按 id 查询单个用户**
+**按 id 查询单个成员**
 
 ```http
-GET http://localhost:8080/users/1
+GET http://localhost:8080/members/1
 ```
 
-查到返回 200 和该用户；id 不存在返回 404。
+查到返回 200 和该成员；id 不存在返回 404。
 
-**新增用户**
+**新增成员**
 
 ```http
-POST http://localhost:8080/users
+POST http://localhost:8080/members
 Content-Type: application/json
 
 {"name":"赵六","email":"zhaoliu@example.com"}
 ```
 
-返回 **201 Created**，响应体是带上数据库自增 id 的新用户，`Location` 响应头指向 `/users/4`。
+返回 **201 Created**，响应体是带上数据库自增 id 的新成员，`Location` 响应头指向 `/members/4`。
 
-**整体替换用户（PUT）**
+**整体替换成员（PUT）**
 
 ```http
-PUT http://localhost:8080/users/1
+PUT http://localhost:8080/members/1
 Content-Type: application/json
 
 {"name":"李四改名","email":"lisi-new@example.com"}
@@ -409,10 +409,10 @@ Content-Type: application/json
 name 和 email 都会被请求体里的值覆盖。**PUT 必须提供全部字段**，漏掉的字段会被置为 null，
 触发数据库的非空约束而返回 500，详见下面的常见问题。
 
-**局部更新用户（PATCH）**
+**局部更新成员（PATCH）**
 
 ```http
-PATCH http://localhost:8080/users/1
+PATCH http://localhost:8080/members/1
 Content-Type: application/json
 
 {"name":"王五"}
@@ -420,31 +420,31 @@ Content-Type: application/json
 
 只修改 name，email 保持原样 —— 这就是 PUT 和 PATCH 最直观的区别。
 
-**删除用户**
+**删除成员**
 
 ```http
-DELETE http://localhost:8080/users/1
+DELETE http://localhost:8080/members/1
 ```
 
-成功返回 **204 No Content**（没有响应体）；该用户不存在返回 404。
+成功返回 **204 No Content**（没有响应体）；该成员不存在返回 404。
 
 **用 PowerShell 测试写操作**
 
 POST、PUT、PATCH、DELETE 没法直接用浏览器地址栏访问，可以用 PowerShell 的 `Invoke-WebRequest`：
 
 ```powershell
-Invoke-WebRequest http://localhost:8080/users
+Invoke-WebRequest http://localhost:8080/members
 
-Invoke-WebRequest -Method Post -Uri http://localhost:8080/users `
+Invoke-WebRequest -Method Post -Uri http://localhost:8080/members `
   -ContentType "application/json" -Body '{"name":"赵六","email":"zhaoliu@example.com"}'
 
-Invoke-WebRequest -Method Put -Uri http://localhost:8080/users/1 `
+Invoke-WebRequest -Method Put -Uri http://localhost:8080/members/1 `
   -ContentType "application/json" -Body '{"name":"李四改名","email":"lisi-new@example.com"}'
 
-Invoke-WebRequest -Method Patch -Uri http://localhost:8080/users/1 `
+Invoke-WebRequest -Method Patch -Uri http://localhost:8080/members/1 `
   -ContentType "application/json" -Body '{"name":"王五"}'
 
-Invoke-WebRequest -Method Delete -Uri http://localhost:8080/users/1
+Invoke-WebRequest -Method Delete -Uri http://localhost:8080/members/1
 ```
 
 注意 PowerShell 5.1 遇到 404 这类非 2xx 状态码会直接抛出异常，那正说明接口按预期返回了 404。
@@ -473,7 +473,7 @@ GET http://localhost:8080/h2-console
 
 注意 JDBC URL **不要**把配置里的 `;DB_CLOSE_DELAY=-1` 一起抄进来。
 
-登录后执行 `SELECT * FROM users;`，就能看到接口增删改之后的真实数据，
+登录后执行 `SELECT * FROM members;`，就能看到接口增删改之后的真实数据，
 也可以自己写 SQL 验证某个接口到底改了什么。
 
 ## 运行项目
@@ -490,7 +490,7 @@ GET http://localhost:8080/h2-console
 
 ```text
 http://localhost:8080/             首页
-http://localhost:8080/users        用户列表（真实数据）
+http://localhost:8080/members        成员列表（真实数据）
 http://localhost:8080/hi           文本接口
 http://localhost:8080/test         文本接口
 http://localhost:8080/h2-console   H2 数据库控制台
@@ -620,7 +620,7 @@ gradlew.bat
 1. JDBC URL 是否写成 `jdbc:h2:mem:springbootdb`，能否和 `application.properties` 对上。
 2. User Name 是不是 `sa`，密码是不是留空。
 3. 应用本身是否还在运行 —— 内存库随程序一起消失，程序关掉后控制台自然也连不上。
-4. 表名是 `users` 而不是 `user`。
+4. 表名是 `members` 而不是 `member`。
 
 ### PUT 请求返回 500
 
@@ -632,16 +632,16 @@ email 会被置为 null，触发数据库的非空约束，于是返回 500。
 
 想从根上避免，正常做法是加 DTO 和 `@Valid` 做参数校验，让非法请求在进入业务逻辑之前就返回 400（见后续开发计划）。
 
-### 用已存在的邮箱新增用户返回 500
+### 用已存在的邮箱新增成员返回 500
 
-`User` 的 `email` 字段标了 `unique = true`，邮箱不允许重复。重复时数据库会抛唯一约束冲突，
+`Member` 的 `email` 字段标了 `unique = true`，邮箱不允许重复。重复时数据库会抛唯一约束冲突，
 而目前还没有参数校验和异常处理，所以客户端拿到的是 500 而不是 400。
 
 和 PUT 漏传字段一样，数据不会被写坏：这次插入会整体回滚，原有记录保持不变。
-可以在失败之后再 `GET /users` 确认条数没有变化。
+可以在失败之后再 `GET /members` 确认条数没有变化。
 
-正常做法是加 `@Valid` 参数校验，或者先调 `UserRepository.findByEmail` 查一次再决定是否放行 ——
-`UserRepository` 里那个方法就是为这类场景预留的。
+正常做法是加 `@Valid` 参数校验，或者先调 `MemberRepository.findByEmail` 查一次再决定是否放行 ——
+`MemberRepository` 里那个方法就是为这类场景预留的。
 
 ### 用 Git Bash 的 curl 发送中文请求体报 400
 
@@ -666,11 +666,11 @@ email 会被置为 null，触发数据库的非空约束，于是返回 500。
 
 1. 增加 `application.properties`，学习应用配置和端口修改。
 2. 将控制器整理到 `controller` 包中（另外还拆出了 `service`、`repository`、`entity` 三层）。
-3. 增加 `User` 数据模型和 `/users` 接口。
+3. 增加 `Member` 数据模型和 `/members` 接口。
 4. 学习 POST、PUT、DELETE 请求。
 5. 增加 Service 层，分离控制器和业务逻辑。
 6. 增加 H2 数据库和 Spring Data JPA。
-7. 实现用户数据的增删改查（CRUD）。
+7. 实现成员数据的增删改查（CRUD）。
 
 ### 下一步
 
@@ -678,7 +678,7 @@ email 会被置为 null，触发数据库的非空约束，于是返回 500。
 2. 增加 DTO 和参数校验（`@Valid`），让非法请求返回 400 而不是 500。
 3. 增加统一异常处理（`@ControllerAdvice`），统一错误响应格式。
 4. 增加分页和排序（`Pageable`），以及按姓名、邮箱的模糊查询。
-5. 练习实体之间的关联，例如给用户加上「所属部门」。
+5. 练习实体之间的关联，例如给成员加上「所属部门」。
 6. 尝试把 H2 换成 MySQL 或 PostgreSQL —— 主要工作是改 `application.properties` 和驱动依赖。
 
 ## Git 信息
@@ -690,7 +690,7 @@ chapter4
 ```
 
 本章（chapter4）新增内容：接入 H2 内存数据库与 Spring Data JPA，代码拆成 `controller` /
-`service` / `repository` / `entity` 四层，`/users` 从写死返回字符串的演示接口换成真实读写数据库的 CRUD。
+`service` / `repository` / `entity` 四层，`/members` 从写死返回字符串的演示接口换成真实读写数据库的 CRUD。
 想看这一章相对上一章改了什么，执行 `git diff chapter3 chapter4`。
 
 远程仓库：

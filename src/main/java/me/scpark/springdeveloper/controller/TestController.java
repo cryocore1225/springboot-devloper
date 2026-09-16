@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.RestController;
  * 接收浏览器 HTTP 请求，并返回简单的文本内容。
  *
  * <p>这里的三个接口只演示请求映射的写法，不访问数据库。
- * 真正操作数据的接口在 {@link UserController} 里。
+ * 真正操作数据的接口在 {@link MemberController} 里。
  */
 @RestController // 表示这是一个控制器，方法返回值会直接作为响应内容。
 public class TestController {

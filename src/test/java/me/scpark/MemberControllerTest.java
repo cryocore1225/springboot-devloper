@@ -48,7 +48,7 @@ class MemberControllerTest {
 
         //(then)
         result.andExpect(status().isOk())
-                .andExpect(jsonPath("$[0],id").value(saveMenber.getId()))
+                .andExpect(jsonPath("$[0],id").value(saveMenber.getid()))
                 .andExpect(jsonPath("$[0],name").value(saveMenber.getName()));
     }
 }

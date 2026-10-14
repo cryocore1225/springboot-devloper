@@ -13,15 +13,22 @@ import lombok.NoArgsConstructor;
 public class Menber{
 
 
-     @Id
-     @GeneratedValue(strategy = GenerationType.IDENTITY)
-     @Column(name="id",nullable = false)
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name="id",nullable = false)
     private Long id;
-     @Column(name="name",nullable = false)
+    @Column(name="name",nullable = false)
     private String   name;
+
+    public Menber(String name){
+        this.name=name;
+    }
 
      public String getName(){
          return  name;
+     }
+     public Long getid(){
+         return  id;
      }
 
 

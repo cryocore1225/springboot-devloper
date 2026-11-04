@@ -1,4 +1,4 @@
-package me.scpark.springdeveloper.controller;
+package me.scpark.blogsystem.controller;
 
 import java.net.URI;
 import java.util.List;
@@ -14,17 +14,18 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import me.scpark.springdeveloper.domain.Member;
-import me.scpark.springdeveloper.service.MemberService;
+import jakarta.validation.Valid;
+import me.scpark.blogsystem.domain.Member;
+import me.scpark.blogsystem.service.MemberService;
 
 /**
  * 成员接口，对数据库里的 members 表做增删改查。
  *
- * <p>类上的 @RequestMapping("/members") 是统一前缀，
+ * <p>类上的 @RequestMapping("/api/members") 是统一前缀，
  * 下面每个方法只需要写自己那一段路径，拼起来就是完整的地址。
  */
 @RestController
-@RequestMapping("/members")
+@RequestMapping("/api/members")
 public class MemberController {
 
     private final MemberService memberService;
@@ -66,10 +67,10 @@ public class MemberController {
      * @return 201 和新创建的成员（带上数据库生成的自增 id）
      */
     @PostMapping
-    public ResponseEntity<Member> create(@RequestBody Member member) {
+    public ResponseEntity<Member> create(@Valid @RequestBody Member member) {
         Member created = memberService.create(member);
         // 201 表示"已创建"；Location 响应头告诉调用方这个新资源的地址。
-        return ResponseEntity.created(URI.create("/members/" + created.getId())).body(created);
+        return ResponseEntity.created(URI.create("/api/members/" + created.getId())).body(created);
     }
 
     /**
@@ -79,7 +80,7 @@ public class MemberController {
      * @return 200 和修改后的成员；该 id 不存在返回 404
      */
     @PutMapping("/{id}")
-    public ResponseEntity<Member> update(@PathVariable Long id, @RequestBody Member member) {
+    public ResponseEntity<Member> update(@PathVariable Long id, @Valid @RequestBody Member member) {
         return memberService.update(id, member)
                 .map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.notFound().build());

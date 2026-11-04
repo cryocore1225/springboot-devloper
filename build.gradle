@@ -1,15 +1,16 @@
 plugins {
     id 'java'
-    id 'org.springframework.boot' version '3.4.0' // Spring Boot 버전 3.4.0으로.
+    id 'org.springframework.boot' version '3.4.0' // Spring Boot 3.4.0：项目的基础框架。
     id 'io.spring.dependency-management' version '1.1.0'
 }
 
 group 'me.scpark'
 version '1.0'
+description 'Blogsystem backend —— 博客系统后端'
 
 java {
     toolchain {
-        languageVersion = JavaLanguageVersion.of(22) // java는 oracle jdk 22
+        languageVersion = JavaLanguageVersion.of(22) // java 22
     }
 }
 
@@ -22,6 +23,8 @@ repositories {
 dependencies {
     // Web 层：提供 Spring MVC 和内置的 Web 服务器。
     implementation 'org.springframework.boot:spring-boot-starter-web'
+    // 参数校验：让 @NotBlank 之类的注解在 @Valid 时真正生效。
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
     // 数据访问层：会一并带入 Spring Data JPA、Hibernate 和 HikariCP 连接池。
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     // H2 数据库驱动，只在运行程序时需要，版本由 Spring Boot 统一管理。

@@ -1,10 +1,10 @@
-package me.scpark.springdeveloper.repository;
+package me.scpark.blogsystem.repository;
 
 import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 
-import me.scpark.springdeveloper.domain.Member;
+import me.scpark.blogsystem.domain.Member;
 
 /**
  * 成员的数据访问层，负责和数据库打交道。

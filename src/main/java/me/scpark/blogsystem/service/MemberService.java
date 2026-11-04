@@ -1,4 +1,4 @@
-package me.scpark.springdeveloper.service;
+package me.scpark.blogsystem.service;
 
 import java.util.List;
 import java.util.Optional;
@@ -6,8 +6,8 @@ import java.util.Optional;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import me.scpark.springdeveloper.domain.Member;
-import me.scpark.springdeveloper.repository.MemberRepository;
+import me.scpark.blogsystem.domain.Member;
+import me.scpark.blogsystem.repository.MemberRepository;
 
 /**
  * 成员的业务逻辑层，增删改查的具体处理都放在这里。

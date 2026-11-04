@@ -1,4 +1,4 @@
-package me.scpark.springdeveloper.domain;
+package me.scpark.blogsystem.domain;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -6,15 +6,21 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 
 /**
  * 成员实体，对应数据库里的 members 表。
  *
- * <p>有了这个类，Hibernate 就知道该建一张什么样的表：
- * 类对应表，字段对应列。
+ * <p>在博客系统里，members 表存的是「有权限写文章的人」—— 站内成员（作者）。
+ * 文章上的 author 字段存的是作者名，不是外键，这样删掉成员也不会连带删文章。
+ *
+ * <p>如果以后要加登录、角色（管理员 / 普通作者），就在这张表上继续加字段：
+ * 密码哈希、角色、头像地址等。
  */
 @Entity // 告诉 JPA：这是一个要映射成数据表的类。
-@Table(name = "members") // 表名用复数，和接口地址 /members 对应。
+@Table(name = "members") // 表名用复数，和接口地址 /api/members 对应。
 public class Member {
 
     /** 主键。IDENTITY 表示交给数据库自增生成，新增时不用自己填。 */
@@ -23,11 +29,15 @@ public class Member {
     private Long id;
 
     /** 成员姓名，不允许为空。 */
-    @Column(nullable = false)
+    @NotBlank(message = "姓名不能为空")
+    @Size(max = 50, message = "姓名不能超过 50 个字符")
+    @Column(nullable = false, length = 50)
     private String name;
 
     /** 成员邮箱，不允许为空，而且不能和其他成员重复。 */
-    @Column(nullable = false, unique = true)
+    @NotBlank(message = "邮箱不能为空")
+    @Email(message = "邮箱格式不正确")
+    @Column(nullable = false, unique = true, length = 100)
     private String email;
 
     /**

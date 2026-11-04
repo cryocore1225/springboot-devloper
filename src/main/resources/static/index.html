@@ -2,31 +2,57 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title>Spring Boot 入门示例</title>
+    <title>Blogsystem backend · 博客系统后端</title>
+    <style>
+        body { font-family: "Segoe UI", "Microsoft YaHei", sans-serif; max-width: 860px; margin: 40px auto; line-height: 1.7; color: #222; padding: 0 16px; }
+        h1 { border-bottom: 3px solid #2f6feb; padding-bottom: 8px; }
+        h2 { margin-top: 32px; color: #2f6feb; }
+        code { background: #f2f4f8; padding: 1px 5px; border-radius: 4px; }
+        table { border-collapse: collapse; width: 100%; }
+        th, td { border: 1px solid #d6dbe4; padding: 6px 10px; text-align: left; vertical-align: top; }
+        th { background: #f2f4f8; }
+        .method { font-weight: 600; white-space: nowrap; }
+    </style>
 </head>
 <body>
-<h1>Spring Boot 入门示例</h1>
-<p>欢迎来到我的第一个 Spring Boot Web 项目。</p>
-<p>数据存放在 H2 内存数据库里，下面的成员接口会真正读写数据库。</p>
+<h1>Blogsystem backend</h1>
+<p>博客系统后端：文章（含草稿/发布）、标签、评论、站内成员，数据存放在 H2 内存数据库里。</p>
+<p>所有资源接口都在 <code>/api</code> 下。浏览器只能直接访问 GET 接口，
+新增/修改/删除请用 Postman、curl 或 PowerShell，具体命令见项目 README。</p>
 
-<h2>文本接口</h2>
-<ul>
-    <li><a href="/request">/request</a>：@RequestMapping 示例</li>
-    <li><a href="/hi">/hi</a>：返回一段问候文本</li>
-    <li><a href="/test">/test</a>：返回另一段测试文本</li>
-</ul>
+<h2>文章</h2>
+<table>
+    <tr><th>方法</th><th>地址</th><th>说明</th></tr>
+    <tr><td class="method">GET</td><td><a href="/api/articles">/api/articles</a></td><td>分页查询文章，参数 <code>page</code>（从 0 开始）、<code>size</code>、<code>published</code></td></tr>
+    <tr><td class="method">GET</td><td>/api/articles/search?keyword=JPA</td><td>按标题模糊搜索，忽略大小写</td></tr>
+    <tr><td class="method">GET</td><td><a href="/api/articles/1">/api/articles/{id}</a></td><td>按 id 查单篇，查不到返回 404</td></tr>
+    <tr><td class="method">POST</td><td>/api/articles</td><td>新增文章，成功返回 201；标题/正文/作者为空返回 400</td></tr>
+    <tr><td class="method">PUT</td><td>/api/articles/{id}</td><td>整体替换，需要传全部字段</td></tr>
+    <tr><td class="method">PATCH</td><td>/api/articles/{id}</td><td>局部更新，只改传了的字段</td></tr>
+    <tr><td class="method">POST</td><td>/api/articles/{id}/publish</td><td>把草稿发布出去</td></tr>
+    <tr><td class="method">POST</td><td>/api/articles/{id}/unpublish</td><td>撤回成草稿</td></tr>
+    <tr><td class="method">DELETE</td><td>/api/articles/{id}</td><td>删除文章，连同它的评论一起删</td></tr>
+</table>
 
-<h2>成员接口</h2>
-<ul>
-    <li><a href="/members">GET /members</a>：查询全部成员</li>
-    <li>GET /members/{id}：按 id 查询，例如 <a href="/members/1">/members/1</a>，查不到返回 404</li>
-    <li>POST /members：新增成员，返回 201</li>
-    <li>PUT /members/{id}：整体替换成员信息</li>
-    <li>PATCH /members/{id}：局部更新成员信息</li>
-    <li>DELETE /members/{id}：删除成员，成功返回 204</li>
-</ul>
-<p>POST、PUT、PATCH、DELETE 没法直接用浏览器的地址栏访问，
-得用 Postman、curl 或 PowerShell 发送请求，具体命令见项目 README。</p>
+<h2>评论</h2>
+<table>
+    <tr><th>方法</th><th>地址</th><th>说明</th></tr>
+    <tr><td class="method">GET</td><td><a href="/api/articles/1/comments">/api/articles/{articleId}/comments</a></td><td>查某篇文章的全部评论，按时间正序</td></tr>
+    <tr><td class="method">POST</td><td>/api/articles/{articleId}/comments</td><td>发评论，请求体只要 <code>{"author":"...","content":"..."}</code></td></tr>
+    <tr><td class="method">GET</td><td>/api/comments/{id}</td><td>查单条评论</td></tr>
+    <tr><td class="method">DELETE</td><td>/api/comments/{id}</td><td>删除评论，成功返回 204</td></tr>
+</table>
+
+<h2>站内成员</h2>
+<table>
+    <tr><th>方法</th><th>地址</th><th>说明</th></tr>
+    <tr><td class="method">GET</td><td><a href="/api/members">/api/members</a></td><td>查询全部成员</td></tr>
+    <tr><td class="method">GET</td><td><a href="/api/members/1">/api/members/1</a></td><td>按 id 查询</td></tr>
+    <tr><td class="method">POST</td><td>/api/members</td><td>新增成员，邮箱重复返回 409</td></tr>
+    <tr><td class="method">PUT</td><td>/api/members/{id}</td><td>整体替换</td></tr>
+    <tr><td class="method">PATCH</td><td>/api/members/{id}</td><td>局部更新</td></tr>
+    <tr><td class="method">DELETE</td><td>/api/members/{id}</td><td>删除成员，成功返回 204</td></tr>
+</table>
 
 <h2>数据库工具</h2>
 <ul>

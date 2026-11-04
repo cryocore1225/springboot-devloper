@@ -1,4 +1,4 @@
-package me.scpark.springdeveloper.controller;
+package me.scpark.blogsystem.controller;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
@@ -11,8 +11,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
-import me.scpark.springdeveloper.domain.Member;
-import me.scpark.springdeveloper.service.MemberService;
+import me.scpark.blogsystem.domain.Member;
+import me.scpark.blogsystem.service.MemberService;
 
 /**
  * MemberController 的测试。

@@ -1,6 +1,11 @@
-# springboot-devloper
+# Blogsystem backend
 
-一个用于学习 **Spring Boot Java Web 开发** 的入门项目。项目通过 Gradle 管理依赖，包含 Spring Boot 启动类、REST 接口和静态首页，并已接入 **H2 内存数据库 + Spring Data JPA**，实现了一套真正读写数据库的成员增删改查接口，用来熟悉从项目启动、HTTP 请求响应到数据落库的完整流程。
+博客系统后端：用 **Spring Boot 3.4 + Spring Data JPA + H2** 实现的一套文章 / 评论 / 成员接口。
+给博客前端（例如本工作区里的 NotionNext 站点或 blog-manager 管理面板）提供数据接口，
+也可以直接当 Spring Boot 分层与 JPA 的练习项目看。
+
+项目原名 `springboot-devloper`，2026-11-04 起改造为博客系统后端：项目名、包名、启动类、
+表结构和接口全部换成了博客业务，原来 chapter0～chapter4 的学习阶段代码仍保留在 Git 历史里。
 
 ## 目录
 
@@ -8,770 +13,360 @@
 - [功能概览](#功能概览)
 - [技术栈](#技术栈)
 - [项目结构](#项目结构)
-- [核心代码说明](#核心代码说明)
-- [数据库配置说明](#数据库配置说明)
-- [Spring Boot 启动流程](#spring-boot-启动流程)
-- [接口文档](#接口文档)
+- [数据模型](#数据模型)
+- [一次请求走完四层](#一次请求走完四层)
+- [数据库配置](#数据库配置)
 - [运行项目](#运行项目)
-- [构建项目](#构建项目)
-- [Gradle 配置说明](#gradle-配置说明)
+- [接口用法示例](#接口用法示例)
+- [测试](#测试)
+- [从学习项目改造过来做了什么](#从学习项目改造过来做了什么)
 - [常见问题](#常见问题)
-- [后续开发计划](#后续开发计划)
+- [后续计划](#后续计划)
 
 ## 项目简介
 
-项目名称是 `springboot-devloper`，包名为 `me.scpark.springdeveloper`。当前代码重点学习以下内容：
+- 项目名：`blogsystem-backend`
+- 包名：`me.scpark.blogsystem`
+- 启动类：`me.scpark.blogsystem.BlogsystemApplication`
+- 默认端口：`8080`
+- 数据库：H2 内存库 `jdbc:h2:mem:blogdb`（启动时建表并写入 `data.sql` 的示例数据）
 
-1. 如何创建 Spring Boot 应用。
-2. 如何使用控制器接收浏览器发送的 HTTP 请求。
-3. 如何使用 `@GetMapping`、`@PostMapping` 等注解定义不同请求方法的接口。
-4. 如何返回文本响应和 JSON 响应。
-5. 如何使用 Spring Boot 提供静态 HTML 页面。
-6. 如何使用 Gradle Wrapper 构建和运行项目。
-7. 如何用 Spring Data JPA 把 Java 类映射成数据库表（`@Entity`）。
-8. 如何只写一个继承 `JpaRepository` 的接口就获得全套增删改查方法。
-9. 如何按 controller / service / repository / domain 四层组织代码。
-10. 如何用 `application.properties` 配置数据源，并用 `data.sql` 预置初始数据。
+当前实现的能力：
+
+1. 文章 CRUD，支持分页、按发布状态过滤、按标题模糊搜索。
+2. 草稿与发布两个状态，可发布、可撤回。
+3. 评论挂在文章下面，发评论、查评论、删评论；删文章会连带删评论。
+4. 站内成员 CRUD，邮箱唯一。
+5. 参数校验（标题/正文/作者不能为空、邮箱格式、长度上限），错误统一返回 400 + 字段名。
+6. 数据库约束冲突（例如邮箱重复）返回 409，而不是 500。
+7. 开发期跨域配置，前端可以直接从别的端口访问 `/api/**`。
 
 ## 功能概览
 
+### 文章
+
+| 功能 | 方法与地址 | 说明 |
+|---|---|---|
+| 分页列表 | `GET /api/articles?page=0&size=10` | 按发布时间倒序；`page` 从 **0** 开始，`size` 最大 50 |
+| 只看已发布 | `GET /api/articles?published=true` | 加 `published=false` 则只看草稿 |
+| 标题搜索 | `GET /api/articles/search?keyword=JPA` | 模糊匹配、忽略大小写，同样支持分页 |
+| 单篇详情 | `GET /api/articles/{id}` | 查不到返回 404 |
+| 新建 | `POST /api/articles` | 成功 201 + `Location` 响应头 |
+| 整体替换 | `PUT /api/articles/{id}` | 必须传全部字段，`published` 不传会变成 `false` |
+| 局部更新 | `PATCH /api/articles/{id}` | 只改请求体里出现的字段（`published` 除外） |
+| 发布 | `POST /api/articles/{id}/publish` | 草稿 → 已发布 |
+| 撤回 | `POST /api/articles/{id}/unpublish` | 已发布 → 草稿 |
+| 删除 | `DELETE /api/articles/{id}` | 成功 204，该文章的评论一起删 |
+
+### 评论
+
+| 功能 | 方法与地址 | 说明 |
+|---|---|---|
+| 某文章的评论 | `GET /api/articles/{articleId}/comments` | 按时间正序；文章不存在返回 404 |
+| 发评论 | `POST /api/articles/{articleId}/comments` | 请求体只需 `author`、`content`，成功 201 |
+| 单条评论 | `GET /api/comments/{id}` | 查不到返回 404 |
+| 删除评论 | `DELETE /api/comments/{id}` | 成功 204 |
+
+### 成员
+
+| 功能 | 方法与地址 | 说明 |
+|---|---|---|
+| 全部成员 | `GET /api/members` | — |
+| 单个成员 | `GET /api/members/{id}` | 查不到返回 404 |
+| 新增 | `POST /api/members` | 邮箱重复返回 409 |
+| 整体替换 | `PUT /api/members/{id}` | — |
+| 局部更新 | `PATCH /api/members/{id}` | — |
+| 删除 | `DELETE /api/members/{id}` | 成功 204 |
+
+### 其他
+
 | 功能 | 地址 | 说明 |
 |---|---|---|
-| 静态首页 | `GET /` | 显示项目欢迎页面 |
-| 通用映射接口 | `GET /request` | 使用 `@RequestMapping` 指定 GET 请求 |
-| 问候接口 | `GET /hi` | 使用 `@GetMapping` 返回中文问候文本 |
-| 测试接口 | `GET /test` | 使用 `@GetMapping` 返回测试文本 |
-| 查询全部成员 | `GET /members` | 查出数据库里的所有成员 |
-| 查询单个成员 | `GET /members/{id}` | 按 id 查询，查不到返回 404 |
-| 新增成员 | `POST /members` | 把请求体里的 JSON 存进数据库，返回 201 |
-| 整体替换成员 | `PUT /members/{id}` | 用请求体整体覆盖原有数据 |
-| 局部更新成员 | `PATCH /members/{id}` | 只修改请求体里出现的字段 |
-| 删除成员 | `DELETE /members/{id}` | 从数据库删除，成功返回 204 |
-| 数据库控制台 | `GET /h2-console` | H2 自带的网页版 SQL 控制台 |
-| 练习题（GET） | `GET /quiz?code=100` | 返回一道选择题文本；`code=2` 返回 400，不传 code 默认 100 |
-| 练习题（POST） | `POST /quiz?code=1` | `code=1` 返回 403、`code=2` 返回 200、其余返回 404 |
+| 接口索引页 | `GET /` | 静态 HTML，列出全部接口并可直接点开 GET 接口 |
+| 数据库控制台 | `GET /h2-console` | JDBC URL 填 `jdbc:h2:mem:blogdb`，用户名 `sa`，密码留空 |
 
-上面除首页、控制台和练习题接口之外的接口都真正读写数据库，不再是返回写死字符串的假接口。
+状态码约定：`200` 成功、`201` 已创建、`204` 成功但无响应体、`400` 参数不合法、
+`404` 资源不存在、`409` 数据冲突（邮箱重复）。
 
 ## 技术栈
 
-- **Java 22**：项目配置的 Java 工具链版本。
-- **Spring Boot 3.4.0**：应用启动和 Web 开发框架。
-- **Spring Web**：提供 REST 控制器和 HTTP 请求处理能力。
-- **Spring Data JPA**：用接口和注解完成数据库操作，不用手写 SQL 和实现类。
-- **Hibernate 6.6**：JPA 的具体实现，负责把实体类翻译成建表和增删改查语句。
-- **H2 2.3.232**：内存数据库，程序一启动就自动建库建表，不需要额外安装。
-- **HikariCP**：连接池，由 Spring Boot 自动配置。
-- **Gradle 9.6.0**：项目构建与依赖管理工具。
-- **Gradle Wrapper**：使用项目自带的 Gradle 版本，不需要单独安装 Gradle。
-- **IntelliJ IDEA**：推荐的 Java 开发工具。
+| 组件 | 版本 / 说明 |
+|---|---|
+| Java | 22（Gradle toolchain 固定，机器上装了 JDK 22 即可） |
+| Spring Boot | 3.4.0 |
+| Spring Web | REST 控制器、内置 Tomcat |
+| Spring Data JPA | 实体映射 + Repository 自动实现 |
+| Hibernate | 6.x，JPA 的具体实现 |
+| H2 | 2.3.x 内存数据库，启动自动建表 |
+| Bean Validation | `spring-boot-starter-validation`，支撑 `@NotBlank`、`@Email`、`@Valid` |
+| Gradle | 9.6.0（用项目自带的 `gradlew`，不用单独装） |
 
 ## 项目结构
 
 ```text
-springboot-devloper/
-├── .gitignore                         # Git 忽略规则
-├── build.gradle                       # Gradle 插件、版本和依赖配置
-├── settings.gradle                    # Gradle 项目名称配置
-├── gradlew                            # Linux/macOS Gradle Wrapper
-├── gradlew.bat                        # Windows Gradle Wrapper
-├── gradle/
-│   └── wrapper/                       # Gradle Wrapper 文件
+blogsystem-backend/
+├── build.gradle                     # 依赖与 Java 版本
+├── settings.gradle                  # rootProject.name = 'blogsystem-backend'
+├── gradlew / gradlew.bat            # Gradle Wrapper
+├── README.md                        # 本文件：接口、运行、改造说明
+├── 代码导读.md                       # 逐个文件、逐个注解讲清代码在干什么
 └── src/
     ├── main/
-    │   ├── java/
-    │   │   └── me/scpark/springdeveloper/
-    │   │       ├── BackendApplication.java   # Spring Boot 启动类
-    │   │       ├── controller/               # 控制器层：接收 HTTP 请求
-    │   │       │   ├── TestController.java       # 文本接口示例
-    │   │       │   ├── QuizController.java       # 练习题接口：演示各种状态码
-    │   │       │   └── MemberController.java     # 成员增删改查接口
-    │   │       ├── service/                  # 业务逻辑层：决定要做什么
-    │   │       │   └── MemberService.java
-    │   │       ├── repository/               # 数据访问层：和数据库打交道
-    │   │       │   └── MemberRepository.java
-    │   │       └── domain/                   # 实体层：Java 类与数据表的映射
-    │   │           ├── Member.java
-    │   │           └── Article.java              # 文章实体
+    │   ├── java/me/scpark/blogsystem/
+    │   │   ├── BlogsystemApplication.java      # 启动类，组件扫描的起点
+    │   │   ├── config/CorsConfig.java          # 开发期跨域配置
+    │   │   ├── controller/                     # 接请求、发响应，不写业务逻辑
+    │   │   │   ├── ArticleController.java
+    │   │   │   ├── CommentController.java
+    │   │   │   ├── MemberController.java
+    │   │   │   └── ApiExceptionHandler.java    # 统一异常 → 400/409
+    │   │   ├── service/                        # 业务规则
+    │   │   │   ├── ArticleService.java
+    │   │   │   ├── CommentService.java
+    │   │   │   └── MemberService.java
+    │   │   ├── repository/                     # 只跟数据库打交道
+    │   │   │   ├── ArticleRepository.java
+    │   │   │   ├── CommentRepository.java
+    │   │   │   └── MemberRepository.java
+    │   │   ├── domain/                         # 实体，一个类对应一张表
+    │   │   │   ├── Article.java
+    │   │   │   ├── Comment.java
+    │   │   │   └── Member.java
+    │   │   └── dto/PageResult.java             # 分页响应结构
     │   └── resources/
-    │       ├── application.properties        # 应用与数据库配置
-    │       ├── data.sql                      # 启动时预置的示例数据
-    │       └── static/
-    │           └── index.html                # 静态首页
-    └── test/                                 # 测试（JUnit + MockMvc）
-        └── java/me/scpark/springdeveloper/
-            ├── JunitTest.java                        # 纯 JUnit 入门
-            ├── controller/
-            │   ├── MemberControllerTest.java         # 接口层测试
-            │   └── QuizControllerTest.java           # 练习题接口测试
-            └── repository/
-                └── MemberRepositoryTest.java         # 数据层测试
+    │       ├── application.properties          # 端口、数据源、JPA、data.sql
+    │       ├── data.sql                        # 预置 3 成员 / 4 文章 / 4 评论
+    │       └── static/index.html               # 接口索引页
+    └── test/
+        ├── java/me/scpark/blogsystem/
+        │   ├── JunitTest.java                  # 上下文启动 + data.sql 校验
+        │   ├── controller/*Test.java           # MockMvc 接口测试
+        │   └── repository/*Test.java           # @DataJpaTest 查询测试
+        └── resources/*.sql                     # 测试专用数据
 ```
 
-构建后还会生成 `build/` 目录。该目录是编译产物和临时构建文件，已经被 `.gitignore` 忽略，不应提交到 Git。
-
-## 核心代码说明
-
-### `BackendApplication.java`
-
-```java
-@SpringBootApplication // 启用自动配置，并扫描当前包下的 Spring 组件。
-public class BackendApplication {
-    public static void main(String[] args) {
-        // 启动 Spring Boot，同时启动内置的 Web 服务器。
-        SpringApplication.run(BackendApplication.class, args);
-    }
-}
-```
-
-- `@SpringBootApplication` 是 Spring Boot 应用的核心注解。
-- 它组合了配置、自动配置和组件扫描功能。
-- `main` 方法是 Java 程序入口。
-- `SpringApplication.run(...)` 会创建 Spring 容器并启动内置 Web 服务器。
-- 默认情况下，应用监听 `8080` 端口。
-
-### `TestController.java`
-
-```java
-@RestController // 方法返回值会直接作为 HTTP 响应内容。
-public class TestController {
-    // @RequestMapping 是通用写法，可以通过 method 指定请求类型。
-    @RequestMapping(value = "/request", method = RequestMethod.GET)
-    public String requestMappingExample() {
-        return "这是 @RequestMapping 接口返回的内容。";
-    }
-
-    @GetMapping("/hi") // 处理 GET 请求，通常用于查询数据。
-    public String hi() {
-        return "你好，这是 Spring Boot 返回的内容。";
-    }
-
-}
-```
-
-- `@RestController` 表示这是一个 REST 控制器，方法返回值会直接作为 HTTP 响应内容。
-- `@RequestMapping` 是通用映射注解，可以通过 `method` 属性指定请求类型。
-- `@GetMapping` 处理 GET 请求，通常用于查询数据；它其实就是 `@RequestMapping(method = RequestMethod.GET)` 的简写。
-- 方法返回 `String` 时，浏览器或客户端会收到普通文本响应。
-
-这个控制器现在只保留三个不访问数据库的文本接口。原来演示 POST / PUT / PATCH / DELETE 的四个方法已经删掉，
-因为它们的路径 `/members` 会和新写的 `MemberController` 撞车，改由后者提供同样路径、但真正操作数据库的版本。
-
-### `index.html`
-
-文件位置：
+## 数据模型
 
 ```text
-src/main/resources/static/index.html
+members（站内成员 / 作者）
+  id           bigint 主键，自增
+  name         姓名，非空
+  email        邮箱，非空且唯一
+
+articles（文章）
+  id           bigint 主键，自增
+  title        标题，非空，≤200
+  content      正文，非空，CLOB
+  author       作者名，非空（存名字，不是外键）
+  tags         标签，逗号分隔，≤200，可为空
+  published    是否已发布，非空，默认 true
+  created_at   创建时间，非空，创建后不可改
+  updated_at   最后修改时间，非空，每次更新自动刷新
+
+comments（评论）
+  id           bigint 主键，自增
+  article_id   外键 → articles.id，非空
+  author       评论人昵称，非空
+  content      评论内容，非空，≤1000
+  created_at   评论时间，非空
 ```
 
-Spring Boot 会自动提供 `static` 目录下的静态资源。访问根路径 `/` 时，应用会返回这个 HTML 页面。该页面与 REST 接口是两种不同的内容：
+两个设计取舍写在代码注释里，这里也重复一遍：
 
-- `/` 返回 HTML 页面。
-- `/hi`、`/test` 和 `/request` 是 GET 文本接口。
-- `/members` 相关接口真正读写数据库，覆盖查询、新增、整体修改、局部修改和删除。
-- `/h2-console` 是 H2 数据库自带的控制台页面。
+- **文章的 author 是字符串，不是外键。** 博客里作者改名、成员被删都不应该影响历史文章，
+  而且文章列表接口也就不用每次都 join members 表。
+- **Article 没有反向的 comments 集合。** 评论通过 `Comment.article` 单向关联文章，
+  查评论时走 `findByArticle_IdOrderByCreatedAtAsc`。少一层双向关联，就少一类循环引用和懒加载的坑。
 
-### `domain/Member.java`
+## 一次请求走完四层
 
-```java
-@Entity // 告诉 JPA：这是一个要映射成数据表的类。
-@Table(name = "members") // member 是 H2 的保留字，表名直接叫 member 会建表失败，所以用复数。
-public class Member {
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
-
-    @Column(nullable = false)
-    private String name;
-
-    @Column(nullable = false, unique = true)
-    private String email;
-
-    protected Member() { }   // JPA 要求的无参构造函数
-}
-```
-
-- `@Entity` 把这个类和一张数据表绑定起来，Hibernate 会根据字段自动建表。
-- `@Table(name = "members")` 指定表名。**不能直接用 `member`**，它是 H2 的保留字，建表会失败。
-- `@Id` 标记主键；`@GeneratedValue(strategy = GenerationType.IDENTITY)` 表示主键交给数据库自增生成，新增时不用自己填。
-- `@Column` 用来设置列的限制：`nullable = false` 表示不允许为空，`unique = true` 表示不允许重复。
-- 无参构造函数是 JPA 的硬性要求：Hibernate 从数据库读出数据时，要用反射先造一个空对象再往里塞值。
-- 这里没有引入 Lombok，getter 和 setter 都是手写的，学习阶段看得见每一步更好。
-
-关于列名：Spring Boot 默认的命名策略会把驼峰字段名转成下划线列名，
-所以 `name`、`email` 这类单个单词的字段列名不变，但以后如果加上 `createdAt`，
-建表时对应的列名会是 `created_at` —— 这是正常行为，不是配置写错了。
-
-### `domain/Article.java`
-
-```java
-@Entity
-@Table(name = "articles")
-public class Article {
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
-
-    @Column(nullable = false)
-    private String title;
-
-    @Lob
-    @Column(nullable = false)
-    private String content;
-
-    @Column(nullable = false)
-    private String author;
-
-    @Column(nullable = false, updatable = false)
-    private LocalDateTime createdAt;
-
-    protected Article() { }   // JPA 要求的无参构造函数
-
-    @PrePersist
-    void fillCreatedAt() { /* createdAt 为空时补上当前时间 */ }
-}
-```
-
-- `id`、`title`、`author` 的写法和 `Member` 完全一样，也就是「类对应表、字段对应列」。
-- 正文用 `@Lob` 而不是普通 `@Column`：文章的正文可能很长，`VARCHAR` 有长度上限，加 `@Lob` 后 Hibernate 会把它建成 H2 的 `clob`（大文本）列。
-- `updatable = false` 表示这一列只出现在 insert 语句里，之后的 update 不会带上它 —— 适合「创建时间」这种字段。
-- `@PrePersist` 是 JPA 的生命周期回调，保存到数据库之前自动执行；这里用来在 `createdAt` 为空时补上当前时间，避免非空约束报错。
-- 有了这个实体，`ddl-auto=create-drop` 会在启动时自动多建一张 `articles` 表；但目前还没有对应的 Repository / Service / Controller，接口层留到下一步再补。
-- 字段名是驼峰的 `createdAt`，按默认命名策略，建出来的列名是 `created_at`。
-
-### `repository/MemberRepository.java`
-
-```java
-public interface MemberRepository extends JpaRepository<Member, Long> {
-    Optional<Member> findByEmail(String email);
-}
-```
-
-- 只要继承 `JpaRepository` 并写好泛型，Spring Data JPA 就会在启动时自动生成实现类，
-  `findAll`、`findById`、`save`、`deleteById`、`existsById` 这些方法全都不用手写。
-- 两个泛型参数分别是「要操作的实体类」和「它的主键类型」。
-- `findByEmail` 演示了**派生查询**：方法名本身就是一条查询语句，`findBy` 后面跟字段名，
-  Spring Data JPA 会把它翻译成 `where email = ?`。它目前还没有对应的接口，留作写法示例。
-
-### `service/MemberService.java`
-
-业务逻辑层。控制器只负责收发 HTTP 请求，具体做什么由这一层决定。
-
-- `@Service` 把它标记成由 Spring 管理的服务组件。
-- `@Transactional(readOnly = true)` 加在类上，表示下面的方法默认运行在只读事务里；写数据的方法各自覆盖成可写事务。
-- 通过**构造函数注入** `MemberRepository`，字段声明成 `final`。只有一个构造函数时不需要写 `@Autowired`。
-- 查不到成员时统一返回 `Optional.empty()`，交给控制器去决定返回 404，而不是直接抛异常。
-
-写方法有三个值得注意的地方：
-
-1. `create` 调用 `save`。`save` 会根据主键是否为空自行判断是新增还是更新：主键为空就是新增，生成 `insert` 语句。
-2. `update`（PUT）和 `patch`（PATCH）都**没有**调用 `save`。从数据库查出来的对象已经处于 Hibernate 的「托管」状态，
-   方法结束、事务提交时，Hibernate 会自动比对字段有没有变化，变了就生成 `update` 语句 —— 这叫脏检查。
-3. `patch` 里每个字段都先判断是否为 null 再赋值，这正是 PUT 和 PATCH 语义差别的来源：
-   PUT 无条件覆盖全部字段，PATCH 只覆盖请求里真正提供了的字段。
-
-### `controller/MemberController.java`
-
-```java
-@RestController
-@RequestMapping("/members") // 类级前缀，下面每个方法只写自己那一段路径
-public class MemberController {
-    @GetMapping              public ResponseEntity<List<Member>> findAll()
-    @GetMapping("/{id}")     public ResponseEntity<Member> findById(@PathVariable Long id)
-    @PostMapping             public ResponseEntity<Member> create(@RequestBody Member member)
-    @PutMapping("/{id}")     public ResponseEntity<Member> update(@PathVariable Long id, @RequestBody Member member)
-    @PatchMapping("/{id}")   public ResponseEntity<Member> patch(@PathVariable Long id, @RequestBody Member member)
-    @DeleteMapping("/{id}")  public ResponseEntity<Void> delete(@PathVariable Long id)
-}
-```
-
-- `@RequestMapping("/members")` 是类级前缀，和方法上的路径拼起来才是完整地址。
-- `@RequestBody` 把请求体里的 JSON 自动转成 `Member` 对象，`@PathVariable` 把 URL 里的 `{id}` 接进方法参数。
-- 返回值用 `ResponseEntity` 而不是裸的 `Member`，因为需要表达不同的状态码：
-  - 新增成功返回 **201 Created**，并通过 `Location` 响应头告诉调用方新资源的地址。
-  - 删除成功返回 **204 No Content**，表示成功但没有响应体。
-  - 查不到成员返回 **404 Not Found**，用 `Optional` 的 `map` / `orElseGet` 一行写完。
-- PUT 与 PATCH 的区别：PUT 会把没提供的字段一并覆盖成 null，PATCH 只改提供的字段。这个差别可以在下面的接口文档里实测。
-
-## 数据库配置说明
-
-### `application.properties`
-
-Spring Boot 的配置文件，放在 `src/main/resources/` 下会被自动读取。本项目用到的主要配置：
-
-| 配置项 | 值 | 作用 |
-|---|---|---|
-| `server.port` | `8080` | 内置 Web 服务器的端口 |
-| `spring.datasource.url` | `jdbc:h2:mem:springbootdb;DB_CLOSE_DELAY=-1` | H2 内存库的连接地址 |
-| `spring.h2.console.enabled` | `true` | 打开 H2 网页版控制台 |
-| `spring.jpa.hibernate.ddl-auto` | `create-drop` | 启动时按实体类建表，关闭时删表 |
-| `spring.jpa.show-sql` | `true` | 把 Hibernate 生成的 SQL 打印到控制台 |
-| `spring.jpa.defer-datasource-initialization` | `true` | 让 `data.sql` 在建表之后才执行 |
-| `spring.sql.init.encoding` | `UTF-8` | 按 UTF-8 读取 `data.sql`，避免中文乱码 |
-
-两个容易踩坑的配置：
-
-- **`DB_CLOSE_DELAY=-1` 必须加。** H2 内存库默认会在最后一个连接关闭时被销毁，
-  而连接池会回收空闲连接，不加这个参数，数据可能在程序运行途中凭空消失。
-  `-1` 表示数据库一直存活到 JVM 退出。
-- **`ddl-auto` 用 `create-drop` 而不是 `update`。** 内存库每次重启本来就是空的，
-  `create-drop` 语义更直白，而且启动时一定按实体类重新建表，不会出现表结构和实体类对不上的情况。
-
-### `data.sql`
-
-预置示例数据的脚本，插入了三条成员记录（张三、李四、王五），这样程序一启动 `GET /members` 就有内容可看。
-
-**这里有个经典坑**：Spring Boot 默认在**数据源初始化阶段**执行 `data.sql`，而这个时机**早于 Hibernate 建表**，
-直接 INSERT 会报「表不存在」。解决办法就是配上 `spring.jpa.defer-datasource-initialization=true`，
-把脚本执行推迟到建完表之后。这两个文件必须成对存在，缺一不可。
-
-## Spring Boot 启动流程
+以 `GET /api/articles?page=0&size=2` 为例：
 
 ```text
-运行 BackendApplication.main()
-          │
-          ▼
-SpringApplication.run(...)
-          │
-          ▼
-创建 Spring ApplicationContext
-          │
-          ▼
-扫描 me.scpark.springdeveloper 包及其子包
-          │
-          ▼
-发现 controller / service / repository / domain 下的各个组件
-          │
-          ▼
-创建 HikariCP 连接池，连上 H2 内存库
-          │
-          ▼
-Hibernate 按 Member 实体建出 members 表
-          │
-          ▼
-执行 data.sql，插入三条示例数据
-          │
-          ▼
-启动内置 Web 服务器（默认 8080）
-          │
-          ▼
-浏览器访问 /、/hi 或 /members
+浏览器 / Postman
+      │  GET /api/articles?page=0&size=2
+      ▼
+内置 Tomcat → DispatcherServlet（按 URL 找到处理方法）
+      ▼
+ArticleController.findAll(page=0, size=2)        controller：接请求、转参数
+      ▼
+ArticleService.findPage(0, 2, null)              service：整理分页参数、选查询分支
+      ▼
+ArticleRepository.findAllByOrderByCreatedAtDesc(PageRequest.of(0, 2))
+      │  repository：接口没写实现，Spring 启动时生成
+      ▼
+Hibernate → select ... from articles order by created_at desc limit 2 offset 0
+      │            + select count(*) from articles
+      ▼
+PageResult.of(page) → Jackson 序列化成 JSON
+      ▼
+200 OK + {"content":[...], "page":0, "size":2, "totalElements":4, ...}
 ```
 
-启动类 `BackendApplication` 位于基础包 `me.scpark.springdeveloper`，
-而 `controller`、`service`、`repository`、`domain` 都是它的子包，
-所以组件扫描和实体扫描都能自动发现它们，不需要额外配置。
+每一层的职责、为什么这么拆、每个注解什么时候生效，见 [代码导读.md](代码导读.md)。
 
-## 接口文档
+## 数据库配置
 
-### 1. 首页
+`src/main/resources/application.properties` 里几项关键配置：
 
-```http
-GET http://localhost:8080/
+```properties
+spring.datasource.url=jdbc:h2:mem:blogdb;DB_CLOSE_DELAY=-1
+spring.jpa.hibernate.ddl-auto=create-drop
+spring.jpa.defer-datasource-initialization=true
+spring.sql.init.encoding=UTF-8
+spring.h2.console.enabled=true
+spring.jpa.open-in-view=false
 ```
 
-返回 `index.html` 静态页面，页面内容包括项目标题和欢迎信息。
+- `mem:blogdb`：数据库在内存里，**程序一重启数据就回到 `data.sql` 的初始状态**，这是有意为之。
+- `DB_CLOSE_DELAY=-1`：连接池回收空闲连接时别把库也一起销毁了。
+- `create-drop`：启动时按实体类建表，关闭时删表，不会出现表结构和实体类对不上的情况。
+- `defer-datasource-initialization=true`：让 `data.sql` 等 Hibernate 建完表再执行，否则报「表不存在」。
+- `open-in-view=false`：事务在 Service 层结束，不在「序列化 JSON」阶段偷偷查库。
 
-### 2. `@RequestMapping` 示例
+`data.sql` 是直接执行的 SQL，不经过实体的 `@PrePersist`，
+所以 `articles.created_at` / `updated_at` 这两个非空列必须自己写值。
 
-```http
-GET http://localhost:8080/request
-```
-
-返回：
-
-```text
-这是 @RequestMapping 接口返回的内容。
-```
-
-### 3. `/hi` 问候接口
-
-```http
-GET http://localhost:8080/hi
-```
-
-返回：
-
-```text
-你好，这是 Spring Boot 返回的内容。
-```
-
-### 4. `/test` 测试接口
-
-```http
-GET http://localhost:8080/test
-```
-
-返回：
-
-```text
-你好，这是 /test 接口返回的内容。
-```
-
-### 5. 练习题接口
-
-用来演示不同 HTTP 状态码怎么返回，内容都是写死的，不碰数据库（题目在 `QuizController` 里）。
-
-```http
-GET http://localhost:8080/quiz?code=100
-```
-
-| 请求 | 返回 |
-|---|---|
-| `GET /quiz`（不传 code，默认 100） | 200 + 第 100 题 |
-| `GET /quiz?code=2` | 400 Bad Request |
-| `GET /quiz?code=101` | 200 + 第 101 题 |
-| `GET /quiz?code=99`（没这题） | 200 + `No question found for code 99` |
-| `POST /quiz?code=1` | 403 Forbidden |
-| `POST /quiz?code=2` | 200 Success |
-| `POST /quiz?code=99` | 404 + `No question found for code 99` |
-
-### 6. 成员接口
-
-下面这些接口会真正读写数据库。程序启动后 H2 里已经有三条预置数据。
-
-**查询全部成员**
-
-```http
-GET http://localhost:8080/members
-```
-
-```json
-[
-  {"id":1,"name":"张三","email":"zhangsan@example.com"},
-  {"id":2,"name":"李四","email":"lisi@example.com"},
-  {"id":3,"name":"王五","email":"wangwu@example.com"}
-]
-```
-
-**按 id 查询单个成员**
-
-```http
-GET http://localhost:8080/members/1
-```
-
-查到返回 200 和该成员；id 不存在返回 404。
-
-**新增成员**
-
-```http
-POST http://localhost:8080/members
-Content-Type: application/json
-
-{"name":"赵六","email":"zhaoliu@example.com"}
-```
-
-返回 **201 Created**，响应体是带上数据库自增 id 的新成员，`Location` 响应头指向 `/members/4`。
-
-**整体替换成员（PUT）**
-
-```http
-PUT http://localhost:8080/members/1
-Content-Type: application/json
-
-{"name":"李四改名","email":"lisi-new@example.com"}
-```
-
-name 和 email 都会被请求体里的值覆盖。**PUT 必须提供全部字段**，漏掉的字段会被置为 null，
-触发数据库的非空约束而返回 500，详见下面的常见问题。
-
-**局部更新成员（PATCH）**
-
-```http
-PATCH http://localhost:8080/members/1
-Content-Type: application/json
-
-{"name":"王五"}
-```
-
-只修改 name，email 保持原样 —— 这就是 PUT 和 PATCH 最直观的区别。
-
-**删除成员**
-
-```http
-DELETE http://localhost:8080/members/1
-```
-
-成功返回 **204 No Content**（没有响应体）；该成员不存在返回 404。
-
-**用 PowerShell 测试写操作**
-
-POST、PUT、PATCH、DELETE 没法直接用浏览器地址栏访问，可以用 PowerShell 的 `Invoke-WebRequest`：
-
-```powershell
-Invoke-WebRequest http://localhost:8080/members
-
-Invoke-WebRequest -Method Post -Uri http://localhost:8080/members `
-  -ContentType "application/json" -Body '{"name":"赵六","email":"zhaoliu@example.com"}'
-
-Invoke-WebRequest -Method Put -Uri http://localhost:8080/members/1 `
-  -ContentType "application/json" -Body '{"name":"李四改名","email":"lisi-new@example.com"}'
-
-Invoke-WebRequest -Method Patch -Uri http://localhost:8080/members/1 `
-  -ContentType "application/json" -Body '{"name":"王五"}'
-
-Invoke-WebRequest -Method Delete -Uri http://localhost:8080/members/1
-```
-
-注意 PowerShell 5.1 遇到 404 这类非 2xx 状态码会直接抛出异常，那正说明接口按预期返回了 404。
-
-也可以使用 PowerShell 测试 GET 接口：
-
-```powershell
-Invoke-WebRequest http://localhost:8080/request
-Invoke-WebRequest http://localhost:8080/hi
-Invoke-WebRequest http://localhost:8080/test
-```
-
-### 7. H2 数据库控制台
-
-```http
-GET http://localhost:8080/h2-console
-```
-
-用浏览器打开后，按下面的信息登录（**必须与 `application.properties` 里的配置一致**）：
-
-| 字段 | 填什么 |
-|---|---|
-| JDBC URL | `jdbc:h2:mem:springbootdb` |
-| User Name | `sa` |
-| Password | 留空 |
-
-注意 JDBC URL **不要**把配置里的 `;DB_CLOSE_DELAY=-1` 一起抄进来。
-
-登录后执行 `SELECT * FROM members;`，就能看到接口增删改之后的真实数据，
-也可以自己写 SQL 验证某个接口到底改了什么。
+换成 MySQL 时：改数据源四行配置、把 H2 驱动换成 MySQL 驱动、把 `ddl-auto` 改成 `update`（或交给 Flyway），
+实体、Service、Controller 一行都不用动 —— 这就是分层的意义。
 
 ## 运行项目
 
-### 使用 Gradle Wrapper 启动
+```bash
+# 在项目根目录
+./gradlew bootRun
+```
 
-进入项目根目录后，在 Windows PowerShell 中执行：
+Windows 命令提示符 / PowerShell 里：
 
 ```powershell
 .\gradlew.bat bootRun
 ```
 
-启动成功后访问：
-
-```text
-http://localhost:8080/             首页
-http://localhost:8080/members        成员列表（真实数据）
-http://localhost:8080/hi           文本接口
-http://localhost:8080/test         文本接口
-http://localhost:8080/quiz?code=100  练习题（GET，换 code 看不同状态码）
-http://localhost:8080/h2-console   H2 数据库控制台
-```
-
-### 使用 IntelliJ IDEA 启动
-
-1. 使用 IntelliJ IDEA 打开项目目录。
-2. 等待 Gradle 同步完成。
-3. 打开 `BackendApplication.java`。
-4. 运行 `main` 方法。
-5. 在浏览器中访问接口地址。
-
-## 构建项目
-
-执行完整构建：
+如果 `JAVA_HOME` 没配，先指定 JDK 22：
 
 ```powershell
-.\gradlew.bat build
+$env:JAVA_HOME = "D:\Dev\SDK\Java\jdk-22.0.2"
+.\gradlew.bat bootRun
 ```
 
-清理后重新构建：
+启动后打开 <http://localhost:8080/> 看接口索引页。
+
+## 接口用法示例
+
+浏览器地址栏只能发 GET，POST / PUT / PATCH / DELETE 请用 Postman、curl 或下面的 PowerShell。
+
+新建一篇文章：
 
 ```powershell
-.\gradlew.bat clean build
+$body = @{
+    title     = "第一次用 PowerShell 调接口"
+    content   = "请求体里的 JSON，会先被校验，再存进数据库。"
+    author    = "张三"
+    tags      = "PowerShell,测试"
+    published = $true
+} | ConvertTo-Json
+
+Invoke-RestMethod -Method Post -Uri "http://localhost:8080/api/articles" `
+    -ContentType "application/json; charset=utf-8" `
+    -Body ([System.Text.Encoding]::UTF8.GetBytes($body))
 ```
 
-只编译主程序：
+只看草稿、每页 5 条：
 
 ```powershell
-.\gradlew.bat classes
+Invoke-RestMethod "http://localhost:8080/api/articles?published=false&size=5"
 ```
 
-构建结果：
+给 1 号文章发评论：
 
-- 编译后的类文件位于 `build/classes/`。
-- 资源文件位于 `build/resources/`。
-- Spring Boot 可执行 JAR 位于 `build/libs/`。
-
-## Gradle 配置说明
-
-`build.gradle` 主要包含以下配置：
-
-```gradle
-plugins {
-    id 'java'
-    id 'org.springframework.boot' version '3.4.0'
-    id 'io.spring.dependency-management' version '1.1.0'
-}
+```powershell
+$comment = @{ author = "李四"; content = "这条评论会挂在文章 1 下面。" } | ConvertTo-Json
+Invoke-RestMethod -Method Post -Uri "http://localhost:8080/api/articles/1/comments" `
+    -ContentType "application/json; charset=utf-8" `
+    -Body ([System.Text.Encoding]::UTF8.GetBytes($comment))
 ```
 
-- `java`：启用 Java 编译功能。
-- `org.springframework.boot`：启用 Spring Boot 的构建和运行任务。
-- `io.spring.dependency-management`：统一管理 Spring 相关依赖版本。
+把 4 号草稿发布出去：
 
-```gradle
-java {
-    toolchain {
-        languageVersion = JavaLanguageVersion.of(22)
-    }
-}
+```powershell
+Invoke-RestMethod -Method Post "http://localhost:8080/api/articles/4/publish"
 ```
 
-表示项目使用 Java 22 工具链编译。运行项目时，应确保本机可以使用 Java 22，或让 Gradle Toolchain 自动找到可用的 JDK。
+用 curl 也一样：
 
-```gradle
-dependencies {
-    implementation 'org.springframework.boot:spring-boot-starter-web'
-    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
-    runtimeOnly 'com.h2database:h2'
-    testImplementation 'org.springframework.boot:spring-boot-starter-test'
-}
+```bash
+curl -X POST http://localhost:8080/api/articles \
+  -H "Content-Type: application/json" \
+  -d '{"title":"curl 新建","content":"正文","author":"张三"}'
 ```
 
-- `implementation`：主程序编译和运行都需要的依赖。
-- `runtimeOnly`：只在运行程序时才需要的依赖。
-- `spring-boot-starter-web`：提供 Spring MVC、内置服务器和 JSON/HTTP 支持。
-- `spring-boot-starter-data-jpa`：提供 Spring Data JPA、Hibernate 和 HikariCP 连接池。
-- `com.h2database:h2`：H2 数据库驱动，编译时用不到，所以写成 `runtimeOnly` 就够了。
-- `spring-boot-starter-test`：提供 Spring Boot 测试常用工具。
+## 测试
+
+```bash
+./gradlew test        # 只跑测试
+./gradlew build       # 编译 + 测试 + 打包成 jar
+```
+
+| 测试类 | 测什么 |
+|---|---|
+| `JunitTest` | 整个 Spring 容器能起来；Bean 都在；H2 连得上；`data.sql` 的成员/文章/评论确实入库 |
+| `ArticleControllerTest` | 列表分页、草稿过滤、标题搜索、详情 404、创建 201、校验 400、PATCH、发布、删除 |
+| `CommentControllerTest` | 查评论、文章不存在 404、发评论、内容为空 400、删评论 |
+| `MemberApiTest` | 成员列表、邮箱格式 400、邮箱重复 409 |
+| `ArticleRepositoryTest` | 分页排序、发布状态过滤、标题模糊搜索、时间戳自动填充 |
+| `MemberRepositoryTest` | 成员派生查询、新增、删除（`@DataJpaTest`，跑完自动回滚） |
+| `MemberControllerTest` | 不启动 Spring，用 mock Service 直接测控制器方法 |
+
+`@SpringBootTest` 测试用的是 MOCK 环境，不占 8080 端口，所以项目正在运行时也能跑测试。
+
+## 从学习项目改造过来做了什么
+
+| 项 | 改造前 | 改造后 |
+|---|---|---|
+| 项目名 | `springboot-devloper` | `blogsystem-backend` |
+| 包名 / 启动类 | `me.scpark.springdeveloper` / `BackendApplication` | `me.scpark.blogsystem` / `BlogsystemApplication` |
+| 文章实体 | 只有 id/title/content/author/createdAt，没有接口 | 加 tags、published、updatedAt，接口齐全 |
+| 评论 | 无 | `Comment` 实体 + 关联查询 + 完整接口 |
+| 列表接口 | 一次全查 | 分页 + `PageResult` 包装，`page`/`size` 有上限 |
+| 参数校验 | 无 | Bean Validation + `@Valid`，错误统一 400 |
+| 异常处理 | 默认错误页 / 500 | `ApiExceptionHandler`：400 带字段错误、409 处理唯一约束 |
+| 跨域 | 无 | `/api/**` 允许跨域，前端可直连 |
+| 演示接口 | `/request`、`/hi`、`/test`、`/quiz` | 已删除（它们属于学习阶段，不是博客业务） |
+| 示例数据 | 3 个成员 | 3 个成员 + 4 篇文章（含 1 篇草稿）+ 4 条评论 |
+
+原来的 chapter0～chapter4 分支和历史提交都还在，用 `git log` / `git switch chapter4` 可以回看。
+本次改造在 `blogsystem-backend` 分支上。
 
 ## 常见问题
 
-### 端口被占用
+**启动报「Table "ARTICLES" not found」**
+`spring.jpa.defer-datasource-initialization=true` 少了，`data.sql` 在建表之前就跑了。
 
-如果 `8080` 端口已经被其他程序占用，启动会失败，日志里会出现 `Port 8080 was already in use`。
+**中文变成问号 / 乱码**
+- `data.sql`：检查 `spring.sql.init.encoding=UTF-8`；
+- 用 PowerShell 发请求：`Invoke-RestMethod` 的 body 要显式转成 UTF-8 字节，见上面的示例；
+- Windows 控制台显示乱码不代表数据错了，去 `/h2-console` 里看一眼最准。
 
-可以在 PowerShell 里用下面这条命令找到占用端口的进程，再决定是否结束它：
+**GET /api/articles 拿不到刚创建的文章**
+新建文章默认 `published=true`，但如果请求里显式传了 `"published": false`，它会进草稿，
+默认列表不筛选，所以能看到；如果你加了 `?published=true`，草稿就被过滤掉了。
 
-```powershell
-Get-NetTCPConnection -LocalPort 8080 | Select-Object OwningProcess
-```
+**页码对不上**
+`page` 从 0 开始。前端显示「第 1 页」时，请求要传 `page=0`。
 
-也可以直接改 `application.properties` 里的 `server.port`，换一个端口运行。
+**PUT 之后文章变回草稿了**
+`published` 是基本类型 `boolean`，PUT 不传这个字段时按 `false` 处理。
+要保留发布状态，PUT 请求体里就要带上 `"published": true`，或者改用 PATCH / 发布接口。
 
-### 访问接口返回 404
+**端口 8080 被占用**
+改 `application.properties` 里的 `server.port`，或者关掉占用的进程。
 
-优先检查：
+## 后续计划
 
-1. Spring Boot 应用是否已经成功启动。
-2. 请求方法是否为 GET。
-3. URL 是否正确：`/hi` 和 `/test` 区分大小写。
-4. `TestController` 是否位于启动类基础包或其子包下。
-
-### Gradle 找不到构建文件
-
-必须在项目根目录执行 Gradle 命令，也就是同时包含以下文件的目录：
-
-```text
-build.gradle
-settings.gradle
-gradlew.bat
-```
-
-### 编译失败
-
-优先检查：
-
-- Java 版本是否满足项目配置的 Java 22。
-- Gradle 依赖是否能够访问 Maven Central。
-- `build.gradle` 是否存在拼写错误。
-
-### H2 控制台连不上或看不到表
-
-优先检查：
-
-1. JDBC URL 是否写成 `jdbc:h2:mem:springbootdb`，能否和 `application.properties` 对上。
-2. User Name 是不是 `sa`，密码是不是留空。
-3. 应用本身是否还在运行 —— 内存库随程序一起消失，程序关掉后控制台自然也连不上。
-4. 表名是 `members` 而不是 `member`。
-
-### PUT 请求返回 500
-
-PUT 是「整体替换」，请求体里必须提供全部字段。只传 `{"name":"..."}` 而漏掉 `email`，
-email 会被置为 null，触发数据库的非空约束，于是返回 500。
-
-好消息是数据不会被破坏：`@Transactional` 会让这次操作整体回滚，原来的记录保持不变。
-换成 PATCH 只传要改的字段就不会有这个问题。
-
-想从根上避免，正常做法是加 DTO 和 `@Valid` 做参数校验，让非法请求在进入业务逻辑之前就返回 400（见后续开发计划）。
-
-### 用已存在的邮箱新增成员返回 500
-
-`Member` 的 `email` 字段标了 `unique = true`，邮箱不允许重复。重复时数据库会抛唯一约束冲突，
-而目前还没有参数校验和异常处理，所以客户端拿到的是 500 而不是 400。
-
-和 PUT 漏传字段一样，数据不会被写坏：这次插入会整体回滚，原有记录保持不变。
-可以在失败之后再 `GET /members` 确认条数没有变化。
-
-正常做法是加 `@Valid` 参数校验，或者先调 `MemberRepository.findByEmail` 查一次再决定是否放行 ——
-`MemberRepository` 里那个方法就是为这类场景预留的。
-
-### 用 Git Bash 的 curl 发送中文请求体报 400
-
-在 Windows 的 Git Bash 里执行 `curl -d '{"name":"张三"}'`，日志会报
-`JSON parse error: Invalid UTF-8 middle byte ...`。这不是接口的问题，
-而是 Git Bash 把命令行参数里的中文按 GBK 编码传了出去。
-
-两个解决办法：改用 PowerShell 的 `Invoke-WebRequest`；
-或者把 JSON 存成 UTF-8 文件，再用 `curl --data-binary @body.json` 发送。
-
-### 启动日志里的 open-in-view 警告
-
-启动时会看到一条 `spring.jpa.open-in-view is enabled by default` 警告。
-这是 Spring Boot 的默认行为，本项目直接返回实体对象、没有用到延迟加载，可以先忽略；
-想消除它，在 `application.properties` 里加上 `spring.jpa.open-in-view=false` 即可。
-
-## 后续开发计划
-
-后续可以按以下顺序扩展项目：
-
-### 已完成
-
-1. 增加 `application.properties`，学习应用配置和端口修改。
-2. 将控制器整理到 `controller` 包中（另外还拆出了 `service`、`repository`、`domain` 三层）。
-3. 增加 `Member` 数据模型和 `/members` 接口。
-4. 学习 POST、PUT、DELETE 请求。
-5. 增加 Service 层，分离控制器和业务逻辑。
-6. 增加 H2 数据库和 Spring Data JPA。
-7. 实现成员数据的增删改查（CRUD）。
-8. 增加 `QuizController`，用 `/quiz` 演示 200 / 400 / 403 / 404 各种状态码。
-9. 补上测试：`JunitTest`（纯 JUnit）、`MemberControllerTest`、`QuizControllerTest`（MockMvc 接口测试）、`MemberRepositoryTest`（`@DataJpaTest` 测数据层）。
-
-### 下一步
-
-1. 增加参数校验（`@Valid`），让非法请求返回 400 而不是 500。
-2. 增加统一异常处理（`@ControllerAdvice`），统一错误响应格式。
-3. 增加分页和排序（`Pageable`），以及按姓名、邮箱的模糊查询。
-4. 练习实体之间的关联，例如给成员加上「所属部门」。
-5. 尝试把 H2 换成 MySQL 或 PostgreSQL —— 主要工作是改 `application.properties` 和驱动依赖。
-
-## Git 信息
-
-当前开发分支：
-
-```text
-chapter4
-```
-
-本章（chapter4）新增内容：接入 H2 内存数据库与 Spring Data JPA，代码拆成 `controller` /
-`service` / `repository` / `domain` 四层，`/members` 从写死返回字符串的演示接口换成真实读写数据库的 CRUD。
-想看这一章相对上一章改了什么，执行 `git diff chapter3 chapter4`。
-
-远程仓库：
-
-```text
-https://github.com/cryocore1225/springboot-devloper.git
-```
-
-提交代码前建议执行：
-
-```powershell
-.\gradlew.bat build
-git status
-git diff --check
-```
+- [ ] 登录与鉴权（Spring Security + JWT），成员表加密码哈希和角色。
+- [ ] 标签拆成独立表，支持按标签检索和标签云。
+- [ ] 评论审核状态（草稿里那篇文章就是这个思路）。
+- [ ] 文章封面图上传与对象存储。
+- [ ] 换成 MySQL / PostgreSQL，并用 Flyway 管理表结构变更。
+- [ ] 接口文档化（springdoc-openapi，自动生成 Swagger UI）。

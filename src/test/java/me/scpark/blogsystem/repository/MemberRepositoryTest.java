@@ -1,4 +1,4 @@
-package me.scpark.springdeveloper.repository;
+package me.scpark.blogsystem.repository;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -11,7 +11,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.test.context.jdbc.Sql;
 
-import me.scpark.springdeveloper.domain.Member;
+import me.scpark.blogsystem.domain.Member;
 
 /**
  * MemberRepository 的测试。

@@ -1,4 +1,4 @@
-package me.scpark.springdeveloper;
+package me.scpark.blogsystem;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -11,8 +11,12 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
-import me.scpark.springdeveloper.repository.MemberRepository;
-import me.scpark.springdeveloper.service.MemberService;
+import me.scpark.blogsystem.repository.ArticleRepository;
+import me.scpark.blogsystem.repository.CommentRepository;
+import me.scpark.blogsystem.repository.MemberRepository;
+import me.scpark.blogsystem.service.ArticleService;
+import me.scpark.blogsystem.service.CommentService;
+import me.scpark.blogsystem.service.MemberService;
 
 /**
  * 最基础的 Spring Boot 测试：验证整个应用容器能不能正常启动。
@@ -44,7 +48,19 @@ class JunitTest {
     private MemberService memberService;
 
     @Autowired
+    private ArticleService articleService;
+
+    @Autowired
+    private CommentService commentService;
+
+    @Autowired
     private MemberRepository memberRepository;
+
+    @Autowired
+    private ArticleRepository articleRepository;
+
+    @Autowired
+    private CommentRepository commentRepository;
 
     @Autowired
     private DataSource dataSource;
@@ -55,16 +71,19 @@ class JunitTest {
         // 方法体是空的，这正是这个测试的重点。
         // 它不检查任何东西，只要求「跑完不抛异常」——
         // 而能跑完，就等于上面那串启动流程全部成功了。
-        // 这是 Spring Initializr 生成项目时自带的那一个测试，几乎是所有项目的起点。
     }
 
     @Test
     @DisplayName("容器里能拿到各个 Bean：组件扫描和自动配置都生效了")
     void beansAreWired() {
-        // 如果 MemberService 没被扫描到、Repository 没被生成实现类，
+        // 如果这些类没被扫描到、Repository 没被生成实现类，
         // 注入阶段容器就起不来了，或者这里会是 null。
         assertThat(memberService).isNotNull();
+        assertThat(articleService).isNotNull();
+        assertThat(commentService).isNotNull();
         assertThat(memberRepository).isNotNull();
+        assertThat(articleRepository).isNotNull();
+        assertThat(commentRepository).isNotNull();
     }
 
     @Test
@@ -79,18 +98,26 @@ class JunitTest {
     }
 
     @Test
-    @DisplayName("data.sql 预置的数据确实进了库")
+    @DisplayName("data.sql 预置的成员、文章、评论确实进了库")
     void dataSqlIsLoaded() {
         // 这一个测试专门守住 application.properties 里那两行配置：
         //   spring.jpa.defer-datasource-initialization=true
         //   spring.sql.init.encoding=UTF-8
         // 少了前者，data.sql 会在建表之前执行，启动时直接报「表不存在」；
-        // 编码配错，中文名会变成乱码。
-        // 两种情况都会让这条断言失败。
+        // 编码配错，中文会变成乱码。
         assertThat(memberRepository.findByEmail("zhangsan@example.com"))
                 .isPresent()
                 .get()
                 .extracting("name")
                 .isEqualTo("张三");
+
+        // 文章一共 4 篇，其中 3 篇已发布、1 篇草稿。
+        assertThat(articleRepository.count()).isEqualTo(4);
+        assertThat(articleRepository.findByPublishedOrderByCreatedAtDesc(true,
+                org.springframework.data.domain.PageRequest.of(0, 10)).getTotalElements()).isEqualTo(3);
+
+        // 评论一共 4 条，其中文章 1 下面有 2 条。
+        assertThat(commentRepository.count()).isEqualTo(4);
+        assertThat(commentRepository.countByArticle_Id(1L)).isEqualTo(2);
     }
 }

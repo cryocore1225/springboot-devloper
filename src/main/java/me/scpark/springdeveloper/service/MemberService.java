@@ -6,7 +6,7 @@ import java.util.Optional;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import me.scpark.springdeveloper.entity.Member;
+import me.scpark.springdeveloper.domain.Member;
 import me.scpark.springdeveloper.repository.MemberRepository;
 
 /**

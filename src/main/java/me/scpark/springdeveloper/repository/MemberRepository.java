@@ -4,7 +4,7 @@ import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 
-import me.scpark.springdeveloper.entity.Member;
+import me.scpark.springdeveloper.domain.Member;
 
 /**
  * 成员的数据访问层，负责和数据库打交道。
@@ -27,4 +27,14 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
      * @return 查到的成员；没有对应成员时返回空 Optional
      */
     Optional<Member> findByEmail(String email);
+
+    /**
+     * 按姓名查找成员。
+     *
+     * <p>同样是一条派生查询，会被翻译成 {@code where name = ?}。
+     *
+     * @param name 成员姓名
+     * @return 查到的成员；没有对应成员时返回空 Optional
+     */
+    Optional<Member> findByName(String name);
 }

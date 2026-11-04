@@ -30,7 +30,7 @@
 6. 如何使用 Gradle Wrapper 构建和运行项目。
 7. 如何用 Spring Data JPA 把 Java 类映射成数据库表（`@Entity`）。
 8. 如何只写一个继承 `JpaRepository` 的接口就获得全套增删改查方法。
-9. 如何按 controller / service / repository / entity 四层组织代码。
+9. 如何按 controller / service / repository / domain 四层组织代码。
 10. 如何用 `application.properties` 配置数据源，并用 `data.sql` 预置初始数据。
 
 ## 功能概览
@@ -48,8 +48,10 @@
 | 局部更新成员 | `PATCH /members/{id}` | 只修改请求体里出现的字段 |
 | 删除成员 | `DELETE /members/{id}` | 从数据库删除，成功返回 204 |
 | 数据库控制台 | `GET /h2-console` | H2 自带的网页版 SQL 控制台 |
+| 练习题（GET） | `GET /quiz?code=100` | 返回一道选择题文本；`code=2` 返回 400，不传 code 默认 100 |
+| 练习题（POST） | `POST /quiz?code=1` | `code=1` 返回 403、`code=2` 返回 200、其余返回 404 |
 
-上面除首页和控制台之外的接口都真正读写数据库，不再是返回写死字符串的假接口。
+上面除首页、控制台和练习题接口之外的接口都真正读写数据库，不再是返回写死字符串的假接口。
 
 ## 技术栈
 
@@ -76,24 +78,34 @@ springboot-devloper/
 ├── gradle/
 │   └── wrapper/                       # Gradle Wrapper 文件
 └── src/
-    └── main/
-        ├── java/
-        │   └── me/scpark/springdeveloper/
-        │       ├── BackendApplication.java   # Spring Boot 启动类
-        │       ├── controller/               # 控制器层：接收 HTTP 请求
-        │       │   ├── TestController.java       # 文本接口示例
-        │       │   └── MemberController.java       # 成员增删改查接口
-        │       ├── service/                  # 业务逻辑层：决定要做什么
-        │       │   └── MemberService.java
-        │       ├── repository/               # 数据访问层：和数据库打交道
-        │       │   └── MemberRepository.java
-        │       └── entity/                   # 实体层：Java 类与数据表的映射
-        │           └── Member.java
-        └── resources/
-            ├── application.properties        # 应用与数据库配置
-            ├── data.sql                      # 启动时预置的示例数据
-            └── static/
-                └── index.html                # 静态首页
+    ├── main/
+    │   ├── java/
+    │   │   └── me/scpark/springdeveloper/
+    │   │       ├── BackendApplication.java   # Spring Boot 启动类
+    │   │       ├── controller/               # 控制器层：接收 HTTP 请求
+    │   │       │   ├── TestController.java       # 文本接口示例
+    │   │       │   ├── QuizController.java       # 练习题接口：演示各种状态码
+    │   │       │   └── MemberController.java     # 成员增删改查接口
+    │   │       ├── service/                  # 业务逻辑层：决定要做什么
+    │   │       │   └── MemberService.java
+    │   │       ├── repository/               # 数据访问层：和数据库打交道
+    │   │       │   └── MemberRepository.java
+    │   │       └── domain/                   # 实体层：Java 类与数据表的映射
+    │   │           ├── Member.java
+    │   │           └── Article.java              # 文章实体
+    │   └── resources/
+    │       ├── application.properties        # 应用与数据库配置
+    │       ├── data.sql                      # 启动时预置的示例数据
+    │       └── static/
+    │           └── index.html                # 静态首页
+    └── test/                                 # 测试（JUnit + MockMvc）
+        └── java/me/scpark/springdeveloper/
+            ├── JunitTest.java                        # 纯 JUnit 入门
+            ├── controller/
+            │   ├── MemberControllerTest.java         # 接口层测试
+            │   └── QuizControllerTest.java           # 练习题接口测试
+            └── repository/
+                └── MemberRepositoryTest.java         # 数据层测试
 ```
 
 构建后还会生成 `build/` 目录。该目录是编译产物和临时构建文件，已经被 `.gitignore` 忽略，不应提交到 Git。
@@ -160,7 +172,7 @@ Spring Boot 会自动提供 `static` 目录下的静态资源。访问根路径 
 - `/members` 相关接口真正读写数据库，覆盖查询、新增、整体修改、局部修改和删除。
 - `/h2-console` 是 H2 数据库自带的控制台页面。
 
-### `entity/Member.java`
+### `domain/Member.java`
 
 ```java
 @Entity // 告诉 JPA：这是一个要映射成数据表的类。
@@ -190,6 +202,43 @@ public class Member {
 关于列名：Spring Boot 默认的命名策略会把驼峰字段名转成下划线列名，
 所以 `name`、`email` 这类单个单词的字段列名不变，但以后如果加上 `createdAt`，
 建表时对应的列名会是 `created_at` —— 这是正常行为，不是配置写错了。
+
+### `domain/Article.java`
+
+```java
+@Entity
+@Table(name = "articles")
+public class Article {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(nullable = false)
+    private String title;
+
+    @Lob
+    @Column(nullable = false)
+    private String content;
+
+    @Column(nullable = false)
+    private String author;
+
+    @Column(nullable = false, updatable = false)
+    private LocalDateTime createdAt;
+
+    protected Article() { }   // JPA 要求的无参构造函数
+
+    @PrePersist
+    void fillCreatedAt() { /* createdAt 为空时补上当前时间 */ }
+}
+```
+
+- `id`、`title`、`author` 的写法和 `Member` 完全一样，也就是「类对应表、字段对应列」。
+- 正文用 `@Lob` 而不是普通 `@Column`：文章的正文可能很长，`VARCHAR` 有长度上限，加 `@Lob` 后 Hibernate 会把它建成 H2 的 `clob`（大文本）列。
+- `updatable = false` 表示这一列只出现在 insert 语句里，之后的 update 不会带上它 —— 适合「创建时间」这种字段。
+- `@PrePersist` 是 JPA 的生命周期回调，保存到数据库之前自动执行；这里用来在 `createdAt` 为空时补上当前时间，避免非空约束报错。
+- 有了这个实体，`ddl-auto=create-drop` 会在启动时自动多建一张 `articles` 表；但目前还没有对应的 Repository / Service / Controller，接口层留到下一步再补。
+- 字段名是驼峰的 `createdAt`，按默认命名策略，建出来的列名是 `created_at`。
 
 ### `repository/MemberRepository.java`
 
@@ -292,7 +341,7 @@ SpringApplication.run(...)
 扫描 me.scpark.springdeveloper 包及其子包
           │
           ▼
-发现 controller / service / repository / entity 下的各个组件
+发现 controller / service / repository / domain 下的各个组件
           │
           ▼
 创建 HikariCP 连接池，连上 H2 内存库
@@ -311,7 +360,7 @@ Hibernate 按 Member 实体建出 members 表
 ```
 
 启动类 `BackendApplication` 位于基础包 `me.scpark.springdeveloper`，
-而 `controller`、`service`、`repository`、`entity` 都是它的子包，
+而 `controller`、`service`、`repository`、`domain` 都是它的子包，
 所以组件扫描和实体扫描都能自动发现它们，不需要额外配置。
 
 ## 接口文档
@@ -360,7 +409,25 @@ GET http://localhost:8080/test
 你好，这是 /test 接口返回的内容。
 ```
 
-### 5. 成员接口
+### 5. 练习题接口
+
+用来演示不同 HTTP 状态码怎么返回，内容都是写死的，不碰数据库（题目在 `QuizController` 里）。
+
+```http
+GET http://localhost:8080/quiz?code=100
+```
+
+| 请求 | 返回 |
+|---|---|
+| `GET /quiz`（不传 code，默认 100） | 200 + 第 100 题 |
+| `GET /quiz?code=2` | 400 Bad Request |
+| `GET /quiz?code=101` | 200 + 第 101 题 |
+| `GET /quiz?code=99`（没这题） | 200 + `No question found for code 99` |
+| `POST /quiz?code=1` | 403 Forbidden |
+| `POST /quiz?code=2` | 200 Success |
+| `POST /quiz?code=99` | 404 + `No question found for code 99` |
+
+### 6. 成员接口
 
 下面这些接口会真正读写数据库。程序启动后 H2 里已经有三条预置数据。
 
@@ -457,7 +524,7 @@ Invoke-WebRequest http://localhost:8080/hi
 Invoke-WebRequest http://localhost:8080/test
 ```
 
-### 6. H2 数据库控制台
+### 7. H2 数据库控制台
 
 ```http
 GET http://localhost:8080/h2-console
@@ -493,6 +560,7 @@ http://localhost:8080/             首页
 http://localhost:8080/members        成员列表（真实数据）
 http://localhost:8080/hi           文本接口
 http://localhost:8080/test         文本接口
+http://localhost:8080/quiz?code=100  练习题（GET，换 code 看不同状态码）
 http://localhost:8080/h2-console   H2 数据库控制台
 ```
 
@@ -665,21 +733,22 @@ email 会被置为 null，触发数据库的非空约束，于是返回 500。
 ### 已完成
 
 1. 增加 `application.properties`，学习应用配置和端口修改。
-2. 将控制器整理到 `controller` 包中（另外还拆出了 `service`、`repository`、`entity` 三层）。
+2. 将控制器整理到 `controller` 包中（另外还拆出了 `service`、`repository`、`domain` 三层）。
 3. 增加 `Member` 数据模型和 `/members` 接口。
 4. 学习 POST、PUT、DELETE 请求。
 5. 增加 Service 层，分离控制器和业务逻辑。
 6. 增加 H2 数据库和 Spring Data JPA。
 7. 实现成员数据的增删改查（CRUD）。
+8. 增加 `QuizController`，用 `/quiz` 演示 200 / 400 / 403 / 404 各种状态码。
+9. 补上测试：`JunitTest`（纯 JUnit）、`MemberControllerTest`、`QuizControllerTest`（MockMvc 接口测试）、`MemberRepositoryTest`（`@DataJpaTest` 测数据层）。
 
 ### 下一步
 
-1. 添加 `MockMvc` 接口测试（目前 `src/test/` 还是空的）。
-2. 增加 DTO 和参数校验（`@Valid`），让非法请求返回 400 而不是 500。
-3. 增加统一异常处理（`@ControllerAdvice`），统一错误响应格式。
-4. 增加分页和排序（`Pageable`），以及按姓名、邮箱的模糊查询。
-5. 练习实体之间的关联，例如给成员加上「所属部门」。
-6. 尝试把 H2 换成 MySQL 或 PostgreSQL —— 主要工作是改 `application.properties` 和驱动依赖。
+1. 增加参数校验（`@Valid`），让非法请求返回 400 而不是 500。
+2. 增加统一异常处理（`@ControllerAdvice`），统一错误响应格式。
+3. 增加分页和排序（`Pageable`），以及按姓名、邮箱的模糊查询。
+4. 练习实体之间的关联，例如给成员加上「所属部门」。
+5. 尝试把 H2 换成 MySQL 或 PostgreSQL —— 主要工作是改 `application.properties` 和驱动依赖。
 
 ## Git 信息
 
@@ -690,7 +759,7 @@ chapter4
 ```
 
 本章（chapter4）新增内容：接入 H2 内存数据库与 Spring Data JPA，代码拆成 `controller` /
-`service` / `repository` / `entity` 四层，`/members` 从写死返回字符串的演示接口换成真实读写数据库的 CRUD。
+`service` / `repository` / `domain` 四层，`/members` 从写死返回字符串的演示接口换成真实读写数据库的 CRUD。
 想看这一章相对上一章改了什么，执行 `git diff chapter3 chapter4`。
 
 远程仓库：

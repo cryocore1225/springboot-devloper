@@ -55,6 +55,14 @@ Windows 命令行：
 
 没有文章时返回 `[]`。
 
+删除文章（Postman：DELETE，URL 里带 id）：
+
+```text
+DELETE /api/articles/1
+```
+
+删除成功返回 **204**（没有响应体）；id 不存在返回 **404**。
+
 ## 数据库
 
 H2 内存库，JDBC URL 是 `jdbc:h2:mem:blogdb`，用户名 `sa`，密码为空。

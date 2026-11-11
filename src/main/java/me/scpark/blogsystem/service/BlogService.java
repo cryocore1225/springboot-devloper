@@ -25,4 +25,13 @@ public class BlogService {
     public List<Article> getAll() {
         return blogRepository.findAll();
     }
+
+    // 删除文章：删成功返回 true，id 不存在返回 false
+    public boolean delete(Long id) {
+        if (!blogRepository.existsById(id)) {
+            return false;
+        }
+        blogRepository.deleteById(id);
+        return true;
+    }
 }

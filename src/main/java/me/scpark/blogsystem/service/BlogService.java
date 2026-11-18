@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Optional;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import lombok.RequiredArgsConstructor;
 import me.scpark.blogsystem.domain.Article;
@@ -33,11 +34,14 @@ public class BlogService {
     }
 
     // 修改文章：id 不存在返回空 Optional
+    // @Transactional 让整个方法在一个事务里跑：查出来的 article 是"托管"状态，
+    // 改完不用再 save，事务提交时 Hibernate 会自己发 update。
+    @Transactional
     public Optional<Article> update(Long id, AddArticleRequest dto) {
         return blogRepository.findById(id)
                 .map(article -> {
                     article.update(dto.getTitle(), dto.getContent());
-                    return blogRepository.save(article);
+                    return article;
                 });
     }
 

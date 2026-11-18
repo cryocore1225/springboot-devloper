@@ -1,6 +1,7 @@
 package me.scpark.blogsystem.service;
 
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.stereotype.Service;
 
@@ -24,6 +25,20 @@ public class BlogService {
     // 查询全部文章
     public List<Article> getAll() {
         return blogRepository.findAll();
+    }
+
+    // 查询一篇文章：有就返回文章，没有返回空 Optional
+    public Optional<Article> getOne(Long id) {
+        return blogRepository.findById(id);
+    }
+
+    // 修改文章：id 不存在返回空 Optional
+    public Optional<Article> update(Long id, AddArticleRequest dto) {
+        return blogRepository.findById(id)
+                .map(article -> {
+                    article.update(dto.getTitle(), dto.getContent());
+                    return blogRepository.save(article);
+                });
     }
 
     // 删除文章：删成功返回 true，id 不存在返回 false

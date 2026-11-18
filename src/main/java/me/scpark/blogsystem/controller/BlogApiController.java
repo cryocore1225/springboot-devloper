@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -39,6 +40,23 @@ public class BlogApiController {
                 .toList();
 
         return ResponseEntity.ok().body(articleResponselist);
+    }
+
+    // 查询一篇文章
+    @GetMapping("/api/articles/{id}")
+    public ResponseEntity<ArticleResponse> getArticle(@PathVariable Long id) {
+        return blogService.getOne(id)
+                .map(article -> ResponseEntity.ok(new ArticleResponse(article)))
+                .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    // 修改文章
+    @PutMapping("/api/articles/{id}")
+    public ResponseEntity<Article> updateArticle(@PathVariable Long id,
+                                                 @RequestBody AddArticleRequest request) {
+        return blogService.update(id, request)
+                .map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
     // 删除文章

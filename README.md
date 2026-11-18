@@ -55,6 +55,22 @@ Windows 命令行：
 
 没有文章时返回 `[]`。
 
+查询一篇文章（Postman：GET）：
+
+```text
+GET /api/articles/1
+```
+
+返回 200 和这篇文章；id 不存在返回 404。
+
+修改文章（Postman：PUT，Body → raw → JSON）：
+
+```json
+{"title": "改过的标题", "content": "改过的正文"}
+```
+
+返回 200 和修改后的文章；id 不存在返回 404。
+
 删除文章（Postman：DELETE，URL 里带 id）：
 
 ```text

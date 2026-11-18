@@ -11,7 +11,9 @@
 <h2>文章接口</h2>
 <ul>
     <li><a href="/api/articles">GET /api/articles</a>：查询全部文章</li>
+    <li><a href="/api/articles/1">GET /api/articles/{id}</a>：查询一篇文章，查不到返回 404</li>
     <li>POST /api/articles：新增文章，请求体为 {"title":"标题","content":"正文"}</li>
+    <li>PUT /api/articles/{id}：修改文章，请求体同上</li>
     <li>DELETE /api/articles/{id}：删除文章，成功返回 204，id 不存在返回 404</li>
 </ul>
 <p>POST 用 Postman 发，Body 选 raw + JSON。</p>

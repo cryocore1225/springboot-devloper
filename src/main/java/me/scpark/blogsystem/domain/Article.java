@@ -26,4 +26,10 @@ public class Article {
         this.title = title;
         this.content = content;
     }
+
+    // 修改标题和正文
+    public void update(String title, String content) {
+        this.title = title;
+        this.content = content;
+    }
 }

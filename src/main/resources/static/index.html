@@ -1,10 +1,127 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title>Greetings from Spring</title>
+    <title>Blog</title>
+    <style>
+        body {
+            font-family: "Segoe UI", "Microsoft YaHei", sans-serif;
+            max-width: 720px;
+            margin: 40px auto;
+            padding: 0 16px;
+            line-height: 1.6;
+            color: #222;
+        }
+        h1 { margin-bottom: 24px; }
+        form {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            padding: 16px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background: #fafafa;
+        }
+        input, textarea {
+            font: inherit;
+            padding: 8px 10px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+        }
+        textarea { min-height: 90px; resize: vertical; }
+        button {
+            align-self: flex-start;
+            font: inherit;
+            padding: 8px 18px;
+            border: none;
+            border-radius: 6px;
+            background: #2f6feb;
+            color: #fff;
+            cursor: pointer;
+        }
+        button:hover { background: #2559c4; }
+        ul { list-style: none; padding: 0; margin-top: 28px; }
+        li {
+            border-bottom: 1px solid #eee;
+            padding: 16px 0;
+        }
+        li h2 { margin: 0 0 6px; font-size: 18px; }
+        li p { margin: 0 0 10px; color: #444; white-space: pre-wrap; }
+        li button {
+            background: #e5484d;
+            padding: 5px 12px;
+            font-size: 14px;
+        }
+        li button:hover { background: #c73a3f; }
+        #empty { color: #888; margin-top: 28px; }
+    </style>
 </head>
 <body>
-<h1>Hello Everyone!!!!给我猫猫呀</h1>
+<h1>Blog</h1>
+
+<form id="article-form">
+    <input id="title" placeholder="标题" required>
+    <textarea id="content" placeholder="正文" required></textarea>
+    <button type="submit">发布</button>
+</form>
+
+<ul id="article-list"></ul>
+<p id="empty" hidden>还没有文章</p>
+
+<script>
+    const listEl = document.getElementById('article-list');
+    const emptyEl = document.getElementById('empty');
+
+    // 查询全部文章
+    async function loadArticles() {
+        const response = await fetch('/api/articles');
+        const articles = await response.json();
+
+        listEl.innerHTML = '';
+        emptyEl.hidden = articles.length > 0;
+
+        for (const article of articles) {
+            const li = document.createElement('li');
+
+            const title = document.createElement('h2');
+            title.textContent = article.title;
+
+            const content = document.createElement('p');
+            content.textContent = article.content;
+
+            const deleteButton = document.createElement('button');
+            deleteButton.textContent = '删除';
+            deleteButton.onclick = () => deleteArticle(article.id);
+
+            li.append(title, content, deleteButton);
+            listEl.appendChild(li);
+        }
+    }
+
+    // 新增文章
+    document.getElementById('article-form').addEventListener('submit', async (event) => {
+        event.preventDefault();
+
+        const title = document.getElementById('title').value;
+        const content = document.getElementById('content').value;
+
+        await fetch('/api/articles', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ title, content })
+        });
+
+        event.target.reset();
+        loadArticles();
+    });
+
+    // 删除文章
+    async function deleteArticle(id) {
+        await fetch('/api/articles/' + id, { method: 'DELETE' });
+        loadArticles();
+    }
+
+    loadArticles();
+</script>
 </body>
 </html>

@@ -1,0 +1,35 @@
+package me.scpark.domain;
+
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+
+// 文章表
+@Entity
+@Getter
+@NoArgsConstructor
+public class Article {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    private String title;
+    private String content;
+
+    @Builder
+    public Article(String title, String content) {
+        this.title = title;
+        this.content = content;
+    }
+
+    // 修改标题和正文
+    public void update(String title, String content) {
+        this.title = title;
+        this.content = content;
+    }
+}

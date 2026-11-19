@@ -16,6 +16,7 @@ import lombok.RequiredArgsConstructor;
 import me.scpark.domain.Article;
 import me.scpark.dto.AddArticleRequest;
 import me.scpark.dto.ArticleResponse;
+import me.scpark.dto.UpdateArticleRequest;
 import me.scpark.service.BlogService;
 
 @RequiredArgsConstructor
@@ -53,7 +54,7 @@ public class BlogApiController {
     // 修改文章
     @PutMapping("/api/articles/{id}")
     public ResponseEntity<Article> updateArticle(@PathVariable Long id,
-                                                 @RequestBody AddArticleRequest request) {
+                                                 @RequestBody UpdateArticleRequest request) {
         return blogService.update(id, request)
                 .map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.notFound().build());

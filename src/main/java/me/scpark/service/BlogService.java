@@ -9,6 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import me.scpark.domain.Article;
 import me.scpark.dto.AddArticleRequest;
+import me.scpark.dto.UpdateArticleRequest;
 import me.scpark.repository.BlogRepository;
 
 // 文章业务：存文章、查文章
@@ -37,7 +38,7 @@ public class BlogService {
     // @Transactional 让整个方法在一个事务里跑：查出来的 article 是"托管"状态，
     // 改完不用再 save，事务提交时 Hibernate 会自己发 update。
     @Transactional
-    public Optional<Article> update(Long id, AddArticleRequest dto) {
+    public Optional<Article> update(Long id, UpdateArticleRequest dto) {
         return blogRepository.findById(id)
                 .map(article -> {
                     article.update(dto.getTitle(), dto.getContent());

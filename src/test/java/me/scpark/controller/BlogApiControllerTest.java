@@ -20,6 +20,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import me.scpark.domain.Article;
 import me.scpark.dto.AddArticleRequest;
+import me.scpark.dto.UpdateArticleRequest;
 import me.scpark.repository.BlogRepository;
 
 // 测试 BlogApiController 的 5 个接口
@@ -85,7 +86,7 @@ class BlogApiControllerTest {
     @DisplayName("PUT /api/articles/{id}：修改成功返回 200，id 不存在返回 404")
     void updateArticle() throws Exception {
         Article article = saveArticle("원래 제목", "원래 내용");
-        AddArticleRequest request = new AddArticleRequest("수정된 제목", "수정된 내용");
+        UpdateArticleRequest request = new UpdateArticleRequest("수정된 제목", "수정된 내용");
 
         mockMvc.perform(put("/api/articles/" + article.getId())
                         .contentType(MediaType.APPLICATION_JSON)

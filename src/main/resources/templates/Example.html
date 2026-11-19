@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title th:text="${title}">Blogsystem backend</title>
+    <style>
+        body {
+            font-family: "Segoe UI", "Microsoft YaHei", sans-serif;
+            max-width: 720px;
+            margin: 40px auto;
+            padding: 0 16px;
+            line-height: 1.6;
+            color: #222;
+        }
+        h1 { margin-bottom: 4px; }
+        .count { color: #888; margin-top: 0; }
+        ul { list-style: none; padding: 0; }
+        li {
+            border-bottom: 1px solid #eee;
+            padding: 16px 0;
+        }
+        li h2 { margin: 0 0 6px; font-size: 18px; }
+        li p { margin: 0; color: #444; white-space: pre-wrap; }
+        .empty { color: #888; }
+        .api { margin-top: 32px; padding-top: 16px; border-top: 1px solid #eee; font-size: 14px; color: #666; }
+        .api a { color: #2f6feb; }
+    </style>
+</head>
+<body>
+
+<h1 th:text="${title}">Blogsystem backend</h1>
+<p class="count" th:text="'共 ' + ${#lists.size(articles)} + ' 篇文章'">共 0 篇文章</p>
+
+<ul>
+    <li th:each="article : ${articles}">
+        <h2 th:text="${article.title}">标题</h2>
+        <p th:text="${article.content}">正文</p>
+    </li>
+</ul>
+
+<p class="empty" th:if="${#lists.isEmpty(articles)}">还没有文章</p>
+
+<div class="api">
+    接口：
+    <a th:href="@{/api/articles}">GET /api/articles</a>
+    ·
+    <a th:href="@{/h2-console}">/h2-console</a>
+</div>
+
+</body>
+</html>

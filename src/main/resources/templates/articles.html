@@ -18,6 +18,8 @@
             padding: 16px 0;
         }
         .article h5 { margin: 0 0 6px; font-size: 18px; }
+        .article h5 a { color: #222; text-decoration: none; }
+        .article h5 a:hover { color: #2f6feb; text-decoration: underline; }
         .article .id { color: #999; font-size: 13px; }
         .article a { color: #2f6feb; text-decoration: none; }
         .empty { color: #888; }
@@ -31,7 +33,9 @@
 
 <div class="article" th:each="article : ${articles}">
     <div class="id" th:text="'#' + ${article.id}">#1</div>
-    <h5 th:text="${article.title}">제목</h5>
+    <h5>
+        <a th:href="@{/articles/{id}(id=${article.id})}" th:text="${article.title}">제목</a>
+    </h5>
     <a th:href="@{/articles/{id}(id=${article.id})}">보러가기</a>
 </div>
 

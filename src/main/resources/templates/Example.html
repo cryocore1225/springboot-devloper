@@ -20,6 +20,8 @@
             padding: 16px 0;
         }
         li h2 { margin: 0 0 6px; font-size: 18px; }
+        li h2 a { color: #222; text-decoration: none; }
+        li h2 a:hover { color: #2f6feb; text-decoration: underline; }
         li p { margin: 0; color: #444; white-space: pre-wrap; }
         .empty { color: #888; }
         .api { margin-top: 32px; padding-top: 16px; border-top: 1px solid #eee; font-size: 14px; color: #666; }
@@ -29,10 +31,16 @@
 <body>
 
 <h1 th:text="${title}">Blogsystem backend</h1>
-<p class="count" th:text="'共 ' + ${#lists.size(articles)} + ' 篇文章'">共 0 篇文章</p>
+<p class="count">
+    <span th:text="'共 ' + ${#lists.size(articles)} + ' 篇文章'">共 0 篇文章</span>
+    ·
+    <a th:href="@{/articles}">全部文章</a>
+</p>
 <ul>
     <li th:each="article : ${articles}">
-        <h2 th:text="${article.title}">标题</h2>
+        <h2>
+            <a th:href="@{/articles/{id}(id=${article.id})}" th:text="${article.title}">标题</a>
+        </h2>
         <p th:text="${article.content}">正文</p>
     </li>
 </ul>

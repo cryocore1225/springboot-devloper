@@ -30,7 +30,6 @@
 
 <h1 th:text="${title}">Blogsystem backend</h1>
 <p class="count" th:text="'共 ' + ${#lists.size(articles)} + ' 篇文章'">共 0 篇文章</p>
-
 <ul>
     <li th:each="article : ${articles}">
         <h2 th:text="${article.title}">标题</h2>

@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>글 목록</title>
+    <style>
+        body {
+            font-family: "Malgun Gothic", "Microsoft YaHei", sans-serif;
+            max-width: 720px;
+            margin: 40px auto;
+            padding: 0 16px;
+            line-height: 1.6;
+            color: #222;
+        }
+        h1 { margin-bottom: 24px; }
+        .article {
+            border-bottom: 1px solid #eee;
+            padding: 16px 0;
+        }
+        .article h5 { margin: 0 0 6px; font-size: 18px; }
+        .article .id { color: #999; font-size: 13px; }
+        .article a { color: #2f6feb; text-decoration: none; }
+        .empty { color: #888; }
+        .top { margin-bottom: 16px; font-size: 14px; }
+    </style>
+</head>
+<body>
+
+<h1>글 목록</h1>
+<p class="top"><a th:href="@{/}">홈으로</a></p>
+
+<div class="article" th:each="article : ${articles}">
+    <div class="id" th:text="'#' + ${article.id}">#1</div>
+    <h5 th:text="${article.title}">제목</h5>
+    <a th:href="@{/articles/{id}(id=${article.id})}">보러가기</a>
+</div>
+
+<p class="empty" th:if="${#lists.isEmpty(articles)}">아직 글이 없습니다.</p>
+
+</body>
+</html>
